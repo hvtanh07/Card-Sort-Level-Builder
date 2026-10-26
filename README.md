@@ -23,7 +23,7 @@ The rules are worked out from the level data, and they replay all 40 saved solut
 - A stack is covered by any remaining stack on a higher `layer` of a different color whose box overlaps it.
 - `buffer_capacity` counts waiting cards. The level is lost when more cards are waiting than fit.
 - `lock` counts down by one for each pole cleared while nothing covers the stack.
-- `color_0` to `color_7` are shown in the GDD color order: Red, Blue, Green, Yellow, Pink, Orange, Purple, Cyan.
+- `color_0` Red, `color_1` Blue, `color_2` Yellow, `color_3` Green (checked against the game build). `color_4` to `color_7` are shown as Pink, Orange, Purple, Cyan, which is not confirmed yet.
 
 ## Layout
 

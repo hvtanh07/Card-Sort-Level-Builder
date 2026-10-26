@@ -12,7 +12,7 @@
   --accent:#1F55D6; --accent-ink:#FFFFFF; --focus:#1F55D6;
   --ok:#1B8641; --warn:#B7791F; --bad:#D9363E; --warn-bg:#FBE7A1; --bad-bg:#FBE0E1; --ok-bg:#DDF3E4;
   --c1:#D9363E; --c2:#2563EB; --c3:#1B8641; --c4:#F4BE0B; --c5:#F472B6; --c6:#F58220; --c7:#7C4DDB; --c8:#22B8D1;
-  --hid:#7D8597; --ice:#4FB3DB; --sel:#18203A; --veil:rgba(24,32,58,.55);
+  --hid:#7D8597; --peg:#5E6C9E; --ice:#4FB3DB; --sel:#18203A; --veil:rgba(24,32,58,.55);
   --display:"Baloo 2","Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
@@ -90,15 +90,18 @@ button,input,select,textarea{font:inherit;color:inherit}
 .stage{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--felt);position:relative}
 .top{display:flex;gap:14px;align-items:flex-end;padding:10px 12px 8px;flex-wrap:wrap;border-bottom:1px dashed var(--felt-axis)}
 .queues{display:flex;gap:10px;align-items:flex-end}
-.queue{display:flex;flex-direction:column-reverse;gap:4px;align-items:center;background:color-mix(in srgb,var(--surface) 55%,transparent);border-radius:12px;padding:6px;min-width:58px}
+.queue{display:flex;flex-direction:column-reverse;gap:0;align-items:center;min-width:58px}
 .queue .qn{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;order:-1}
-.pole{width:50px;height:26px;border-radius:7px;border:0;display:flex;align-items:center;justify-content:center;font:700 13px/1 var(--display);color:#fff;cursor:pointer;position:relative;text-shadow:0 1px 1px rgba(0,0,0,.35);font-variant-numeric:tabular-nums}
-.pole.bottom{height:34px;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
-.pole.hidden{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.25) 0 4px,transparent 4px 8px)}
-.pole.hidden.shut{background-color:var(--hid)!important}
-.pole.on{outline:3px solid var(--sel);outline-offset:2px}
-.pole .fillbar{position:absolute;left:3px;right:3px;bottom:3px;height:4px;border-radius:2px;background:rgba(0,0,0,.25);overflow:hidden}
-.pole .fillbar b{display:block;height:100%;background:#fff}
+.pole{width:58px;border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;color:var(--ink);font:700 12px/1 var(--display);font-variant-numeric:tabular-nums;border-radius:10px}
+.pole svg{width:58px;height:64px;display:block;overflow:visible}
+.pole .rod{fill:var(--peg)}
+.pole .rodhi{fill:rgba(255,255,255,.22)}
+.pole .under{fill:rgba(0,0,0,.28)}
+.pole .hole{fill:rgba(0,0,0,.35)}
+.pole .ring-hid{fill:var(--hid)}
+.pole .qm{font:800 15px/1 var(--display);fill:#fff;text-anchor:middle;dominant-baseline:central}
+.pole .disc{stroke:rgba(0,0,0,.25);stroke-width:.8}
+.pole.on{outline:3px solid var(--sel);outline-offset:1px}
 .pole.done{opacity:.25}
 .buffer{display:flex;flex-direction:column;gap:4px;min-width:0}
 .buffer .lab{font-size:11px;color:var(--muted)}
@@ -113,8 +116,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 #board{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
 #board .grid{stroke:var(--felt-grid);stroke-width:1}
 #board .axis{stroke:var(--felt-axis);stroke-width:1.5}
-.f0{fill:var(--c1)}.f1{fill:var(--c2)}.f2{fill:var(--c3)}.f3{fill:var(--c4)}.f4{fill:var(--c5)}.f5{fill:var(--c6)}.f6{fill:var(--c7)}.f7{fill:var(--c8)}.fh{fill:var(--hid)}
-.b0{background:var(--c1)}.b1{background:var(--c2)}.b2{background:var(--c3)}.b3{background:var(--c4)}.b4{background:var(--c5)}.b5{background:var(--c6)}.b6{background:var(--c7)}.b7{background:var(--c8)}.bh{background:var(--hid)}
+.f0{fill:var(--c1)}.f1{fill:var(--c2)}.f2{fill:var(--c4)}.f3{fill:var(--c3)}.f4{fill:var(--c5)}.f5{fill:var(--c6)}.f6{fill:var(--c7)}.f7{fill:var(--c8)}.fh{fill:var(--hid)}
+.b0{background:var(--c1)}.b1{background:var(--c2)}.b2{background:var(--c4)}.b3{background:var(--c3)}.b4{background:var(--c5)}.b5{background:var(--c6)}.b6{background:var(--c7)}.b7{background:var(--c8)}.bh{background:var(--hid)}
 .stk{cursor:pointer}
 .stk .body{stroke:rgba(0,0,0,.35);stroke-width:2}
 .stk .card{fill:rgba(255,255,255,.22);stroke:rgba(0,0,0,.18);stroke-width:1.5}
@@ -339,7 +342,8 @@ const $$=s=>Array.from(document.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clone=o=>JSON.parse(JSON.stringify(o));
 const NS='http://www.w3.org/2000/svg';
-const COLORS=['Red','Blue','Green','Yellow','Pink','Orange','Purple','Cyan'];
+/* color_0..3 checked against the game build (level 5). color_4..7 follow the GDD color list and are not confirmed yet. */
+const COLORS=['Red','Blue','Yellow','Green','Pink','Orange','Purple','Cyan'];
 const ckey=i=>'color_'+i;
 const cidx=c=>{const m=/^color_(\d+)$/.exec(c||'');return m?+m[1]:-1;};
 const cname=c=>{const i=cidx(c);return i>=0&&i<COLORS.length?COLORS[i]:c;};
@@ -662,6 +666,19 @@ function renderBoard(){
 }
 
 /* ---------- queues + waiting slots ---------- */
+/* a pole as the game draws it: a peg standing in a colored ring; in Play test the cards on it stack up the peg */
+function poleSVG(p,shut,play){
+  const ring=shut?'ring-hid':fcls(p.color);
+  let discs='';
+  if(play&&p.fill>0){const n=Math.max(1,Math.round(p.fill/p.cap*12));for(let k=0;k<n;k++)discs+=`<rect class="disc ${fcls(p.color)}" x="17" y="${(43-k*3.2).toFixed(1)}" width="24" height="3" rx="1.2"/>`;}
+  return `<svg viewBox="0 0 58 64" aria-hidden="true">
+    <ellipse class="${ring}" cx="29" cy="51" rx="27" ry="12.5"/><ellipse class="under" cx="29" cy="51" rx="27" ry="12.5"/>
+    <ellipse class="${ring}" cx="29" cy="46" rx="27" ry="12.5"/>
+    <ellipse class="hole" cx="29" cy="46" rx="10" ry="4.6"/>
+    <rect class="rod" x="23" y="2" width="12" height="45" rx="6"/><rect class="rodhi" x="25.5" y="5" width="3" height="38" rx="1.5"/>
+    ${discs}${shut?'<text class="qm" x="29" y="49">?</text>':''}
+  </svg>`;
+}
 function renderTop(){
   const lv=L(),play=mode==='play'&&game;
   const n=Math.max(1,lv.n_slots|0);
@@ -676,7 +693,7 @@ function renderTop(){
     }
     html+=`<div class="queue"><span class="qn">Queue ${q+1}</span>${items.map(p=>{
       const shut=p.hidden&&!p.bottom;
-      return `<button type="button" class="pole ${bcls(p.color)}${p.bottom?' bottom':''}${p.hidden?' hidden':''}${shut&&play?' shut':''}${!play&&selPole===p.i?' on':''}" data-pole="${p.i}" title="Pole ${p.i+1}: ${cname(p.color)}, ${p.cap} cards${p.hidden?', hidden until it reaches the bottom':''}">${shut&&play?'?':(play?p.fill+'/'+p.cap:p.cap)}${play?`<span class="fillbar"><b style="width:${Math.round(p.fill/p.cap*100)||0}%"></b></span>`:''}</button>`;
+      return `<button type="button" class="pole${!play&&selPole===p.i?' on':''}" data-pole="${p.i}" title="Pole ${p.i+1}: ${cname(p.color)}, ${p.cap} cards${p.hidden?', hidden until it reaches the bottom':''}${p.bottom?' · at the bottom, taking cards':''}">${poleSVG(p,shut&&play,play)}<span>${shut&&play?'?':(play?p.fill+'/'+p.cap:p.cap)}${p.hidden&&!(shut&&play)?' ?':''}</span></button>`;
     }).join('')||'<span class="hint">empty</span>'}</div>`;
   }
   $('#queues').innerHTML=html;
