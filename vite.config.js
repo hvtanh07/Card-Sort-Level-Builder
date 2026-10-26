@@ -1,0 +1,9 @@
+import {defineConfig} from 'vite';
+import {viteSingleFile} from 'vite-plugin-singlefile';
+
+// `npm run build` writes one self-contained dist/index.html that opens without a server.
+export default defineConfig({
+  plugins: [viteSingleFile()],
+  build: {outDir: 'dist', emptyOutDir: true},
+  test: {include: ['tests/**/*.test.js']}
+});

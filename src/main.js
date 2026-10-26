@@ -1,354 +1,12 @@
-<title>Card Slots Level Editor</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-/* Layout: three panes like a level-design workbench. Level list on the left, the table and pole queues in the middle, the inspector on the right. Colors follow the Card Slots GDD. */
-:root{
-  --paper:#EEF1F6; --surface:#FFFFFF; --ink:#18203A; --muted:#566079; --line:#D6DCE8; --tint:#E3E8F1;
-  --rail:#232A40; --rail-ink:#EEF1F8; --rail-muted:#AAB3C9; --rail-line:rgba(255,255,255,.13); --rail-hover:rgba(255,255,255,.08); --rail-on:rgba(143,177,255,.20);
-  --felt:#DCE3EE; --felt-grid:rgba(24,32,58,.07); --felt-axis:rgba(24,32,58,.18);
-  --accent:#1F55D6; --accent-ink:#FFFFFF; --focus:#1F55D6;
-  --ok:#1B8641; --warn:#B7791F; --bad:#D9363E; --warn-bg:#FBE7A1; --bad-bg:#FBE0E1; --ok-bg:#DDF3E4;
-  --c1:#D9363E; --c2:#2563EB; --c3:#1B8641; --c4:#F4BE0B; --c5:#F472B6; --c6:#F58220; --c7:#7C4DDB; --c8:#22B8D1;
-  --hid:#7D8597; --peg:#5E6C9E; --ice:#4FB3DB; --sel:#18203A; --veil:rgba(24,32,58,.55);
-  --display:"Baloo 2","Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-  --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --paper:#131826; --surface:#1B2234; --ink:#E9EDF7; --muted:#A3ADC4; --line:#2F3852; --tint:#232B41;
-    --rail:#0E1220; --felt:#0F1422; --felt-grid:rgba(233,237,247,.05); --felt-axis:rgba(233,237,247,.16);
-    --accent:#8FB1FF; --accent-ink:#0E1220; --focus:#8FB1FF;
-    --ok:#5BD08A; --warn:#F2C14E; --bad:#FF7A80; --warn-bg:#4A3D12; --bad-bg:#4A1E24; --ok-bg:#163A26;
-    --hid:#6E778C; --ice:#8FD8F5; --sel:#FFFFFF; --veil:rgba(6,9,18,.66); color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#131826; --surface:#1B2234; --ink:#E9EDF7; --muted:#A3ADC4; --line:#2F3852; --tint:#232B41;
-  --rail:#0E1220; --felt:#0F1422; --felt-grid:rgba(233,237,247,.05); --felt-axis:rgba(233,237,247,.16);
-  --accent:#8FB1FF; --accent-ink:#0E1220; --focus:#8FB1FF;
-  --ok:#5BD08A; --warn:#F2C14E; --bad:#FF7A80; --warn-bg:#4A3D12; --bad-bg:#4A1E24; --ok-bg:#163A26;
-  --hid:#6E778C; --ice:#8FD8F5; --sel:#FFFFFF; --veil:rgba(6,9,18,.66); color-scheme:dark;
-}
-*,*::before,*::after{box-sizing:border-box}
-html,body{height:100%}
-body{background:var(--paper);color:var(--ink);font:400 13px/1.45 var(--body);margin:0}
-button,input,select,textarea{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-[hidden]{display:none!important}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+import './style.css';
+import ORIGINAL from './data/levels.json';
+import {esc,clone,COLORS,ckey,cidx,cname,fcls,bcls} from './util.js';
+import {CARD_W,CARD_H,LAYOUT_DEFAULTS,hitBox,buildChains,cardsOf} from './layout.js';
+import {blockerOf,newGame,activeOf,remaining,tap,canTap,boosterShuffle,boosterRemove,snapGame,restoreGame,verify,solve,check,tally,statusOf} from './engine.js';
 
-.app{display:grid;grid-template-columns:250px minmax(0,1fr) 340px;height:100%;min-height:0}
-
-/* ---------- left: level list ---------- */
-.rail{background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;min-height:0;padding-left:env(safe-area-inset-left,0px)}
-.brand{padding:14px 14px 8px;display:flex;align-items:center;gap:10px}
-.brand svg{width:30px;height:30px;flex:none}
-.brand h1{font:800 18px/1 var(--display);margin:0;letter-spacing:.01em}
-.brand p{margin:2px 0 0;color:var(--rail-muted);font-size:11.5px}
-.rail-tools{display:flex;gap:6px;padding:4px 12px 8px;flex-wrap:wrap}
-.rail input[type=search]{width:100%;background:rgba(255,255,255,.07);border:1px solid var(--rail-line);border-radius:8px;padding:6px 9px;color:var(--rail-ink)}
-.rail input::placeholder{color:var(--rail-muted)}
-.rbtn{background:rgba(255,255,255,.08);border:1px solid var(--rail-line);color:var(--rail-ink);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:12px}
-.rbtn:hover{background:rgba(255,255,255,.15)}
-.rbtn.danger.armed{background:#D9363E;border-color:#D9363E;color:#fff}
-.list{list-style:none;margin:0;padding:2px 8px 10px;overflow:auto;flex:1;min-height:0}
-.list li{margin:0}
-.lv{width:100%;display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;border:0;background:none;color:inherit;text-align:left;cursor:pointer}
-.lv:hover{background:var(--rail-hover)}
-.lv[aria-current="true"]{background:var(--rail-on)}
-.lv .n{font:700 15px/1 var(--display);color:var(--rail-muted);text-align:right;font-variant-numeric:tabular-nums}
-.lv[aria-current="true"] .n{color:var(--rail-ink)}
-.lv .t{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lv .m{display:block;color:var(--rail-muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lv .m i{font-style:normal;color:#F4BE0B}
-.dot{width:9px;height:9px;border-radius:50%;background:#5BD08A}
-.dot.warn{background:#F2C14E}.dot.bad{background:#FF7A80}
-.rail-foot{border-top:1px solid var(--rail-line);padding:8px 12px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.rail-foot small{color:var(--rail-muted);font-size:11px;flex-basis:100%}
-
-/* ---------- middle: toolbar + board ---------- */
-.mid{display:flex;flex-direction:column;min-width:0;min-height:0}
-.bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--surface)}
-.grp{display:flex;gap:2px;align-items:center;padding-right:6px;margin-right:2px;border-right:1px solid var(--line)}
-.grp:last-child{border-right:0}
-.tb{display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;background:none;border-radius:7px;padding:5px 8px;cursor:pointer;white-space:nowrap}
-.tb:hover{background:var(--tint)}
-.tb:disabled{opacity:.4;cursor:default;background:none}
-.tb svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.tb[aria-pressed="true"]{background:var(--tint);border-color:var(--line)}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg button{border:0;background:none;padding:5px 12px;cursor:pointer;font-weight:600}
-.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
-.bar select{border:1px solid var(--line);border-radius:7px;background:var(--surface);padding:4px 6px}
-.lvtitle{font:700 16px/1 var(--display);margin-right:6px}
-.spacer{flex:1}
-
-.stage{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--felt);position:relative}
-.top{display:flex;gap:14px;align-items:flex-end;padding:10px 12px 8px;flex-wrap:wrap;border-bottom:1px dashed var(--felt-axis)}
-.queues{display:flex;gap:10px;align-items:flex-end}
-.queue{display:flex;flex-direction:column-reverse;gap:0;align-items:center;min-width:58px}
-.queue .qn{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;order:-1}
-.pole{width:58px;border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;color:var(--ink);font:700 12px/1 var(--display);font-variant-numeric:tabular-nums;border-radius:10px}
-.pole svg{width:58px;height:64px;display:block;overflow:visible}
-.pole .rod{fill:var(--peg)}
-.pole .rodhi{fill:rgba(255,255,255,.22)}
-.pole .under{fill:rgba(0,0,0,.28)}
-.pole .hole{fill:rgba(0,0,0,.35)}
-.pole .ring-hid{fill:var(--hid)}
-.pole .qm{font:800 15px/1 var(--display);fill:#fff;text-anchor:middle;dominant-baseline:central}
-.pole .disc{stroke:rgba(0,0,0,.25);stroke-width:.8}
-.pole.on{outline:3px solid var(--sel);outline-offset:1px}
-.pole.done{opacity:.25}
-.buffer{display:flex;flex-direction:column;gap:4px;min-width:0}
-.buffer .lab{font-size:11px;color:var(--muted)}
-.cells{display:flex;flex-wrap:wrap;gap:2px;max-width:340px}
-.cell{width:11px;height:15px;border-radius:3px;background:color-mix(in srgb,var(--surface) 70%,transparent);border:1px solid var(--felt-axis)}
-.cell.over{border-color:var(--bad);background:var(--bad-bg)}
-.boosters{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:auto}
-.bst{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:6px 10px;cursor:pointer;font-weight:600;display:inline-flex;gap:6px;align-items:center}
-.bst[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.bst small{font-weight:500;color:inherit;opacity:.75}
-.board-wrap{flex:1;min-height:0;position:relative;overflow:hidden}
-#board{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
-#board .grid{stroke:var(--felt-grid);stroke-width:1}
-#board .axis{stroke:var(--felt-axis);stroke-width:1.5}
-.f0{fill:var(--c1)}.f1{fill:var(--c2)}.f2{fill:var(--c4)}.f3{fill:var(--c3)}.f4{fill:var(--c5)}.f5{fill:var(--c6)}.f6{fill:var(--c7)}.f7{fill:var(--c8)}.fh{fill:var(--hid)}
-.b0{background:var(--c1)}.b1{background:var(--c2)}.b2{background:var(--c4)}.b3{background:var(--c3)}.b4{background:var(--c5)}.b5{background:var(--c6)}.b6{background:var(--c7)}.b7{background:var(--c8)}.bh{background:var(--hid)}
-.stk{cursor:pointer}
-.stk .body{stroke:rgba(0,0,0,.35);stroke-width:2}
-.stk .card{fill:rgba(255,255,255,.22);stroke:rgba(0,0,0,.18);stroke-width:1.5}
-.stk .cnt{font:800 46px/1 var(--display);fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:5px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
-.stk .meta{font:600 19px/1 var(--body);fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.4);stroke-width:4px;pointer-events:none}
-.stk .arrow{stroke:#fff;stroke-width:5;fill:none;stroke-linecap:round;opacity:.85;pointer-events:none}
-.stk .ice{fill:var(--ice);opacity:.45;stroke:#fff;stroke-width:3;stroke-dasharray:14 8;pointer-events:none}
-.stk .lockb circle{fill:var(--surface);stroke:var(--ice);stroke-width:5}
-.stk .lockb text{font:800 30px/1 var(--display);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
-.stk .q{font:800 64px/1 var(--display);fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none;opacity:.9}
-.stk.blocked{opacity:.55}
-.stk.free .body{stroke:var(--sel);stroke-width:3;stroke-dasharray:10 6}
-.stk.sel .body{stroke:var(--sel);stroke-width:7;stroke-dasharray:none}
-.stk .ord{font:800 24px/1 var(--display);text-anchor:middle;dominant-baseline:central;fill:var(--ink)}
-.stk .ordc{fill:var(--surface);stroke:var(--ink);stroke-width:3}
-.stk.shake{animation:shake .3s}
-@keyframes shake{25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
-@media (prefers-reduced-motion:reduce){.stk.shake{animation:none}}
-.marq{fill:color-mix(in srgb,var(--accent) 15%,transparent);stroke:var(--accent);stroke-width:2;stroke-dasharray:8 5}
-.link{stroke:var(--ink);stroke-width:3;stroke-dasharray:6 6;opacity:.45;pointer-events:none}
-.zoomhud{position:absolute;right:calc(10px + env(safe-area-inset-right,0px));bottom:10px;display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px}
-.coords{position:absolute;left:10px;bottom:10px;font:500 11px/1 var(--mono);color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-variant-numeric:tabular-nums}
-.banner{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 16px;border-radius:999px;font:700 15px/1.2 var(--display);box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:2;max-width:calc(100% - 32px);text-align:center}
-.banner.won{background:var(--ok-bg);color:var(--ok)}.banner.lost{background:var(--bad-bg);color:var(--bad)}.banner.info{background:var(--surface);color:var(--ink)}
-
-/* ---------- right: inspector ---------- */
-.insp{background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;min-width:0;padding-right:env(safe-area-inset-right,0px)}
-.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 6px;overflow-x:auto}
-.tabs button{border:0;background:none;padding:10px 9px 8px;cursor:pointer;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
-.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-.tabs .badge{display:inline-block;min-width:16px;padding:0 4px;border-radius:8px;font-size:10.5px;line-height:16px;text-align:center;margin-left:3px;background:var(--tint)}
-.tabs .badge.bad{background:var(--bad-bg);color:var(--bad)}.tabs .badge.warn{background:var(--warn-bg);color:var(--warn)}
-.pane{flex:1;overflow:auto;padding:12px 14px 30px;min-height:0}
-.pane h2{font:700 15px/1.2 var(--display);margin:4px 0 8px}
-.pane h3{font:600 11px/1 var(--body);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:18px 0 8px}
-.pane p{margin:6px 0}
-.hint{color:var(--muted);font-size:12px}
-.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
-.fields .full{grid-column:1/-1}
-.fld{display:flex;flex-direction:column;gap:3px;min-width:0}
-.fld>span{font-size:11px;color:var(--muted);font-weight:500}
-.fld>span code{font:11px var(--mono);color:var(--muted)}
-.fld input,.fld select,.fld textarea{border:1px solid var(--line);border-radius:7px;padding:5px 7px;background:var(--paper);width:100%;min-width:0}
-.fld input[type=number]{font-variant-numeric:tabular-nums}
-.chk{display:flex;gap:7px;align-items:center;cursor:pointer}
-.chk input{width:16px;height:16px;margin:0}
-.swatches{display:flex;gap:5px;flex-wrap:wrap}
-.sw{width:30px;height:30px;border-radius:8px;border:2px solid transparent;cursor:pointer;color:#fff;font:700 12px/1 var(--display);text-shadow:0 1px 1px rgba(0,0,0,.4)}
-.sw[aria-pressed="true"]{border-color:var(--sel);box-shadow:inset 0 0 0 2px var(--surface)}
-.elem{border:1px solid var(--line);border-radius:10px;padding:9px 10px;display:grid;gap:6px;margin-top:8px}
-.elem b{font-weight:600}
-.elem .hint{margin:0}
-.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;cursor:pointer;font-weight:600}
-.btn:hover{background:var(--tint)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn.armed{background:var(--bad);border-color:var(--bad);color:#fff}
-.btn:disabled{opacity:.45;cursor:default}
-.prow{display:grid;grid-template-columns:22px 92px 58px auto 1fr;gap:6px;align-items:center;padding:5px 4px;border-radius:8px}
-.prow.on{background:var(--tint)}
-.prow .pc{width:22px;height:22px;border-radius:6px}
-.prow select,.prow input{border:1px solid var(--line);border-radius:6px;padding:3px 4px;background:var(--paper);min-width:0;width:100%}
-.prow .ops{display:flex;gap:2px;justify-content:flex-end}
-.ib{border:0;background:none;cursor:pointer;padding:3px 5px;border-radius:5px;color:var(--muted)}
-.ib:hover{background:var(--tint);color:var(--ink)}
-.qtag{font-size:10.5px;color:var(--muted);white-space:nowrap}
-.tally{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-.tally th,.tally td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:right}
-.tally th:first-child,.tally td:first-child{text-align:left}
-.tally .x{color:var(--bad);font-weight:700}
-.issues{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.issues li{border-radius:8px;padding:7px 9px;font-size:12.5px}
-.issues li.bad{background:var(--bad-bg)}.issues li.warn{background:var(--warn-bg)}.issues li.ok{background:var(--ok-bg)}
-.issues li b{font-weight:700}
-.sol{display:flex;flex-wrap:wrap;gap:4px;font:12px var(--mono)}
-.sol span{border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:var(--paper)}
-.sol span.fail{border-color:var(--bad);color:var(--bad)}
-textarea.code{font:12px/1.45 var(--mono);width:100%;min-height:340px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--paper);resize:vertical;white-space:pre;tab-size:2}
-.msg{font-size:12px;margin-top:6px;min-height:1.2em}
-.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}
-kbd{font:11px var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--paper)}
-.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;align-items:center}
-.keys kbd{justify-self:start;white-space:nowrap}
-
-/* ---------- modal ---------- */
-.modal{position:fixed;inset:0;background:var(--veil);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
-.dlg{background:var(--surface);border-radius:14px;width:min(720px,100%);max-height:100%;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.3)}
-.dlg header{padding:14px 16px 6px;display:flex;align-items:center;gap:10px}
-.dlg header h2{font:700 18px/1 var(--display);margin:0;flex:1}
-.dlg .bd{padding:4px 16px 8px;overflow:auto}
-.dlg footer{padding:10px 16px 14px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
-.dlg textarea.code{min-height:260px}
-.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:9px;z-index:30;font-weight:600;max-width:calc(100% - 32px)}
-
-@media (max-width:1100px){.app{grid-template-columns:220px minmax(0,1fr) 300px}}
-@media (max-width:900px){
-  html,body{height:auto}
-  .app{grid-template-columns:1fr;height:auto}
-  .rail{max-height:300px;padding-left:max(0px,env(safe-area-inset-left,0px))}
-  .mid{height:80vh}
-  .insp{border-left:0;border-top:1px solid var(--line)}
-  .pane{overflow:visible}
-  .tb .lbl{display:none}
-}
-</style>
-
-<div class="app">
-  <aside class="rail" aria-label="Levels">
-    <div class="brand">
-      <svg viewBox="0 0 30 30" aria-hidden="true"><rect x="3" y="7" width="15" height="20" rx="3" fill="#D9363E"/><rect x="8" y="5" width="15" height="20" rx="3" fill="#2563EB"/><rect x="13" y="3" width="15" height="20" rx="3" fill="#F4BE0B"/></svg>
-      <div><h1>Card Slots</h1><p>Level editor</p></div>
-    </div>
-    <div class="rail-tools">
-      <input type="search" id="lvSearch" placeholder="Filter levels" aria-label="Filter levels">
-    </div>
-    <div class="rail-tools">
-      <button class="rbtn" id="lvNew" type="button">New</button>
-      <button class="rbtn" id="lvDup" type="button">Duplicate</button>
-      <button class="rbtn" id="lvUp" type="button" aria-label="Move level up">↑</button>
-      <button class="rbtn" id="lvDown" type="button" aria-label="Move level down">↓</button>
-      <button class="rbtn danger" id="lvDel" type="button">Delete</button>
-    </div>
-    <ul class="list" id="lvList"></ul>
-    <div class="rail-foot">
-      <button class="rbtn" id="btnImport" type="button">Import</button>
-      <button class="rbtn" id="btnExportAll" type="button">Export all</button>
-      <button class="rbtn danger" id="btnReset" type="button">Reset to sheet</button>
-      <small id="saveNote">Changes are saved in this browser.</small>
-    </div>
-  </aside>
-
-  <section class="mid" aria-label="Level board">
-    <div class="bar" id="bar">
-      <span class="lvtitle" id="lvTitle">level_001</span>
-      <div class="seg" role="group" aria-label="Mode">
-        <button type="button" id="modeEdit" aria-pressed="true">Edit</button>
-        <button type="button" id="modePlay" aria-pressed="false">Play test</button>
-      </div>
-      <div class="grp" data-edit>
-        <button class="tb" id="tUndo" type="button" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span class="lbl">Undo</span></button>
-        <button class="tb" id="tRedo" type="button" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg><span class="lbl">Redo</span></button>
-      </div>
-      <div class="grp" data-edit>
-        <button class="tb" id="tAdd" type="button" title="Add a stack (A)"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="M12 9v7M8.5 12.5h7"/></svg><span class="lbl">Stack</span></button>
-        <button class="tb" id="tOnTop" type="button" title="Add a stack on top of the selected one (T)"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="12" height="14" rx="2.5"/><rect x="9" y="2" width="12" height="14" rx="2.5"/></svg><span class="lbl">On top</span></button>
-        <button class="tb" id="tDup" type="button" title="Duplicate (Ctrl+D)"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2.5"/><path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-7A2.5 2.5 0 0 0 4 5.5v8A2.5 2.5 0 0 0 6.5 16H8"/></svg><span class="lbl">Duplicate</span></button>
-        <button class="tb" id="tDel" type="button" title="Delete (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/></svg><span class="lbl">Delete</span></button>
-        <button class="tb" id="tLayDown" type="button" title="Layer down ([)"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
-        <button class="tb" id="tLayUp" type="button" title="Layer up (])"><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
-      </div>
-      <div class="grp" data-edit>
-        <label class="hint" for="snap">Snap</label>
-        <select id="snap"><option value="1">1</option><option value="5">5</option><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option></select>
-        <button class="tb" id="tFree" type="button" aria-pressed="true" title="Outline the stacks a player can tap at the start">Free stacks</button>
-        <button class="tb" id="tOrder" type="button" aria-pressed="false" title="Number the stacks in solution order">Solution order</button>
-        <button class="tb" id="tFlip" type="button" aria-pressed="false" title="Show positive y going up instead of down">y up</button>
-      </div>
-      <div class="grp" data-play hidden>
-        <button class="tb" id="pUndo" type="button" title="Take back the last move"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span class="lbl">Take back</span></button>
-        <button class="tb" id="pRestart" type="button"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span class="lbl">Restart</span></button>
-        <button class="tb" id="pReplay" type="button" title="Play the saved solution one move at a time"><svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg><span class="lbl">Step solution</span></button>
-        <button class="tb" id="pSave" type="button" title="Save these moves as the level's solution"><svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg><span class="lbl">Save as solution</span></button>
-      </div>
-      <span class="spacer"></span>
-      <button class="tb" id="tCopy" type="button" title="Copy this level's JSON"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2.5"/><path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-7A2.5 2.5 0 0 0 4 5.5v8A2.5 2.5 0 0 0 6.5 16H8"/></svg><span class="lbl">Copy JSON</span></button>
-    </div>
-    <div class="stage">
-      <div class="top">
-        <div class="queues" id="queues" aria-label="Pole queues"></div>
-        <div class="buffer">
-          <span class="lab" id="bufLab">Waiting slots</span>
-          <div class="cells" id="cells"></div>
-        </div>
-        <div class="boosters" data-play hidden>
-          <button class="bst" type="button" id="bHand" aria-pressed="false" title="Pick any stack, even a blocked or locked one">Hand <small id="bHandN">0 used</small></button>
-          <button class="bst" type="button" id="bShuffle" title="Bring poles that match the waiting cards to the bottom, shuffle the rest">Shuffle <small id="bShuffleN">0 used</small></button>
-          <button class="bst" type="button" id="bRemove" aria-pressed="false" title="Pick any pole: it pulls its cards and clears">Remove <small id="bRemoveN">0 used</small></button>
-        </div>
-      </div>
-      <div class="board-wrap">
-        <svg id="board" role="application" aria-label="Table. Drag stacks to move them."></svg>
-        <div class="banner" id="banner" hidden></div>
-        <div class="coords" id="coords">x 0 · y 0</div>
-        <div class="zoomhud">
-          <button class="tb" id="zOut" type="button" aria-label="Zoom out">−</button>
-          <button class="tb" id="zFit" type="button">Fit</button>
-          <button class="tb" id="zIn" type="button" aria-label="Zoom in">+</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <aside class="insp" aria-label="Inspector">
-    <div class="tabs" role="tablist" id="tabs">
-      <button role="tab" data-tab="level" aria-selected="true">Level</button>
-      <button role="tab" data-tab="stack" aria-selected="false">Stack</button>
-      <button role="tab" data-tab="poles" aria-selected="false">Poles</button>
-      <button role="tab" data-tab="check" aria-selected="false">Check <span class="badge" id="chkBadge">0</span></button>
-      <button role="tab" data-tab="json" aria-selected="false">JSON</button>
-    </div>
-    <div class="pane" id="pane"></div>
-  </aside>
-</div>
-
-<div class="modal" id="modal" hidden>
-  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
-    <header><h2 id="dlgTitle">Import levels</h2><button class="ib" id="dlgX" type="button" aria-label="Close">✕</button></header>
-    <div class="bd" id="dlgBody"></div>
-    <footer id="dlgFoot"></footer>
-  </div>
-</div>
-<div class="toast" id="toast" hidden></div>
-
-<script>
-(function(){
-'use strict';
-const ORIGINAL=/*LEVELS*/;
-
-/* ---------- helpers ---------- */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const clone=o=>JSON.parse(JSON.stringify(o));
 const NS='http://www.w3.org/2000/svg';
-/* color_0..3 checked against the game build (level 5). color_4..7 follow the GDD color list and are not confirmed yet. */
-const COLORS=['Red','Blue','Yellow','Green','Pink','Orange','Purple','Cyan'];
-const ckey=i=>'color_'+i;
-const cidx=c=>{const m=/^color_(\d+)$/.exec(c||'');return m?+m[1]:-1;};
-const cname=c=>{const i=cidx(c);return i>=0&&i<COLORS.length?COLORS[i]:c;};
-const fcls=c=>{const i=cidx(c);return i>=0&&i<8?'f'+i:'fh';};
-const bcls=c=>{const i=cidx(c);return i>=0&&i<8?'b'+i:'bh';};
 const STORE='cardSlotsLevelEditor.v1';
 const inFrame=(()=>{try{return window.self!==window.top;}catch(e){return true;}})();
 
@@ -356,7 +14,8 @@ const inFrame=(()=>{try{return window.self!==window.top;}catch(e){return true;}}
 let levels=[],cur=0,sel=new Set(),selPole=-1,tab='level',mode='edit';
 let undo=[],redo=[],lastSnap='';
 const view={x:-300,y:-300,w:1400,h:1000};
-let flipY=false,showFree=true,showOrder=false,snap=10;
+let flipY=false,showFree=true,showOrder=false,showBoxes=false,snap=10;
+let layoutOpts=Object.assign({},LAYOUT_DEFAULTS),refImg=null;
 let game=null,gameHist=[],booster=null,boostUse={hand:0,shuffle:0,remove:0},replayIdx=0;
 let issuesCache=[];
 const L=()=>levels[cur];
@@ -366,13 +25,13 @@ function load(){
   try{saved=JSON.parse(localStorage.getItem(STORE)||'null');}catch(e){}
   if(saved&&Array.isArray(saved.levels)&&saved.levels.length){levels=saved.levels;cur=Math.min(saved.cur|0,levels.length-1);}
   else{levels=clone(ORIGINAL);cur=0;}
-  try{const p=JSON.parse(localStorage.getItem(STORE+'.prefs')||'{}');flipY=!!p.flipY;if(p.snap)snap=p.snap;if(p.showFree===false)showFree=false;if(p.showOrder)showOrder=true;}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem(STORE+'.prefs')||'{}');if(p.snap)snap=p.snap;if(p.showBoxes)showBoxes=true;if(p.layout)layoutOpts=Object.assign({},LAYOUT_DEFAULTS,p.layout);if(p.showFree===false)showFree=false;if(p.showOrder)showOrder=true;}catch(e){}
 }
 function persist(){
   try{localStorage.setItem(STORE,JSON.stringify({levels,cur}));$('#saveNote').textContent='Changes are saved in this browser.';}
   catch(e){$('#saveNote').textContent='This browser is not saving changes. Export before you close the page.';}
 }
-function savePrefs(){try{localStorage.setItem(STORE+'.prefs',JSON.stringify({flipY,snap,showFree,showOrder}));}catch(e){}}
+function savePrefs(){try{localStorage.setItem(STORE+'.prefs',JSON.stringify({snap,showFree,showOrder,showBoxes,layout:layoutOpts}));}catch(e){}}
 const origById=id=>ORIGINAL.find(o=>o.id===id);
 const isChanged=lv=>{const o=origById(lv.id);return !o||JSON.stringify(o)!==JSON.stringify(lv);};
 
@@ -388,183 +47,6 @@ function doUndo(){if(!undo.length)return;redo.push(lastSnap);lastSnap=undo.pop()
 function doRedo(){if(!redo.length)return;undo.push(lastSnap);lastSnap=redo.pop();levels[cur]=JSON.parse(lastSnap);afterHistory();}
 function afterHistory(){const ids=new Set(L().stacks.map(s=>s.id));sel=new Set([...sel].filter(i=>ids.has(i)));if(selPole>=L().targets.length)selPole=-1;persist();syncUndo();renderAll();}
 function syncUndo(){$('#tUndo').disabled=!undo.length;$('#tRedo').disabled=!redo.length;}
-
-/* ---------- rules engine (checked against all 40 saved solutions) ----------
-   Poles: targets[i] goes into queue i % n_slots, the first one in each queue is at the bottom.
-   Blocking: a stack is blocked by any remaining stack on a higher layer, of a different color, whose w x h box overlaps it (x, y are the box center).
-   Waiting slots: buffer_capacity counts cards. The level is lost when more cards wait than fit. */
-function overlap(a,b){return Math.abs(a.x-b.x)*2<a.w+b.w&&Math.abs(a.y-b.y)*2<a.h+b.h;}
-function blockerOf(s,list){for(const o of list){if(o!==s&&o.layer>s.layer&&o.color!==s.color&&overlap(o,s))return o;}return null;}
-function newGame(lv){
-  const n=Math.max(1,lv.n_slots|0);
-  const poles=lv.targets.map((t,i)=>({i,color:t.color,cap:+t.capacity||0,hidden:!!t.hidden,fill:0,done:false}));
-  const queues=[];for(let q=0;q<n;q++)queues.push([]);
-  poles.forEach((p,i)=>queues[i%n].push(p.i));
-  const stacks=lv.stacks.map(s=>({id:s.id,x:+s.x||0,y:+s.y||0,w:+s.w||0,h:+s.h||0,layer:+s.layer||0,color:s.color,hidden:!!s.hidden,left:+s.count||0,lockN:+s.lock||0,started:false,revealed:false,gone:false}));
-  const g={n,poles,queues,stacks,buffer:[],cap:+lv.buffer_capacity||0,moves:[],state:'play',cleared:0,msg:''};
-  settle(g);updateLocks(g,0);checkEnd(g);
-  return g;
-}
-const activeOf=(g,q)=>{for(const i of g.queues[q]){if(!g.poles[i].done)return g.poles[i];}return null;};
-const remaining=g=>g.stacks.filter(s=>!s.gone);
-function place(g,color,n){
-  for(let q=0;q<g.n&&n>0;q++){const p=activeOf(g,q);if(p&&p.color===color){const k=Math.min(n,p.cap-p.fill);p.fill+=k;n-=k;}}
-  return n;
-}
-function settle(g){
-  let cleared=0,ch=true;
-  while(ch){
-    ch=false;
-    for(let q=0;q<g.n;q++){const p=activeOf(g,q);if(p&&p.fill>=p.cap){p.done=true;cleared++;ch=true;}}
-    const cols=[...new Set(g.buffer)];
-    for(const c of cols){
-      const cnt=g.buffer.filter(x=>x===c).length,left=place(g,c,cnt),moved=cnt-left;
-      if(moved>0){let k=moved;g.buffer=g.buffer.filter(x=>{if(x===c&&k>0){k--;return false;}return true;});ch=true;}
-    }
-  }
-  g.cleared+=cleared;return cleared;
-}
-function updateLocks(g,cleared){
-  const rem=remaining(g);
-  for(const s of rem){
-    const free=!blockerOf(s,rem);
-    if(free)s.revealed=true;
-    if(s.lockN>0&&free)s.lockN=Math.max(0,s.lockN-cleared);
-  }
-  /* fail-safe from the GDD: when only locked cards are left on the table, they unlock */
-  if(rem.length&&rem.every(s=>s.lockN>0))rem.forEach(s=>{s.lockN=0;});
-}
-function checkEnd(g){
-  if(g.buffer.length>g.cap){g.state='lost';g.msg=`Waiting slots overflowed: ${g.buffer.length} cards for ${g.cap} spaces.`;return;}
-  if(!remaining(g).length&&!g.buffer.length){g.state='won';g.msg=`Cleared in ${g.moves.length} moves.`;return;}
-  if(!remaining(g).length&&g.buffer.length){g.state='lost';g.msg='The table is empty but cards are still waiting with no pole to go to.';return;}
-  g.state='play';
-}
-function canTap(g,s){const rem=remaining(g);if(s.gone)return 'gone';if(blockerOf(s,rem))return 'blocked';if(s.lockN>0)return 'locked';return '';}
-function tap(g,id,force){
-  const s=g.stacks.find(x=>x.id===id);if(!s)return 'missing';
-  if(g.state!=='play')return 'over';
-  const why=canTap(g,s);if(why&&!(force&&why!=='gone'))return why;
-  s.gone=true;s.lockN=0;
-  const rest=place(g,s.color,s.left);
-  for(let k=0;k<rest;k++)g.buffer.push(s.color);
-  const c=settle(g);updateLocks(g,c);g.moves.push(id);checkEnd(g);
-  return '';
-}
-function boosterShuffle(g){
-  const order=[];
-  g.buffer.forEach(c=>{if(!order.includes(c))order.push(c);});
-  const rem=remaining(g);
-  rem.filter(s=>!blockerOf(s,rem)&&s.lockN===0).sort((a,b)=>b.layer-a.layer).forEach(s=>{if(!order.includes(s.color))order.push(s.color);});
-  const live=[];g.queues.forEach(q=>q.forEach(i=>{if(!g.poles[i].done)live.push(i);}));
-  const lens=g.queues.map(q=>q.filter(i=>!g.poles[i].done).length);
-  const picks=[];
-  for(const c of order){
-    if(picks.length>=Math.min(3,g.n))break;
-    const cand=live.filter(i=>!picks.includes(i)&&g.poles[i].color===c).sort((a,b)=>(g.poles[a].hidden-g.poles[b].hidden));
-    if(cand.length)picks.push(cand[0]);
-  }
-  let rest=live.filter(i=>!picks.includes(i));
-  for(let i=rest.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[rest[i],rest[j]]=[rest[j],rest[i]];}
-  const nq=g.queues.map(()=>[]);
-  const qOrder=lens.map((l,q)=>q).filter(q=>lens[q]>0);
-  picks.forEach((p,k)=>{const q=qOrder[k%qOrder.length];if(q!=null)nq[q].push(p);else rest.unshift(p);});
-  for(let q=0;q<g.n;q++){while(nq[q].length<lens[q]&&rest.length)nq[q].push(rest.shift());}
-  while(rest.length)nq[0].push(rest.shift());
-  g.queues=nq.map((q,i)=>g.queues[i].filter(x=>g.poles[x].done).concat(q));
-  const c=settle(g);updateLocks(g,c);checkEnd(g);
-}
-function boosterRemove(g,pi){
-  const p=g.poles[pi];if(!p||p.done)return;
-  let need=p.cap-p.fill;
-  let k=Math.min(need,g.buffer.filter(x=>x===p.color).length),take=k;
-  g.buffer=g.buffer.filter(x=>{if(x===p.color&&take>0){take--;return false;}return true;});need-=k;
-  const rem=remaining(g);
-  const rank=s=>{if(s.lockN>0)return 3;if(s.hidden&&!s.revealed)return 2;if(blockerOf(s,rem))return 1;return 0;};
-  rem.filter(s=>s.color===p.color).sort((a,b)=>rank(a)-rank(b)||b.layer-a.layer).forEach(s=>{
-    if(need<=0)return;const t=Math.min(need,s.left);s.left-=t;need-=t;if(s.left<=0){s.gone=true;s.lockN=0;}
-  });
-  p.fill=p.cap;p.done=true;g.cleared++;
-  const c=settle(g);updateLocks(g,1+c);checkEnd(g);
-}
-function snapGame(g){return JSON.stringify({queues:g.queues,poles:g.poles,stacks:g.stacks,buffer:g.buffer,moves:g.moves,state:g.state,cleared:g.cleared,msg:g.msg});}
-function restoreGame(g,s){Object.assign(g,JSON.parse(s));}
-
-function verify(lv){
-  const g=newGame(lv),sol=Array.isArray(lv.solution)?lv.solution:[];
-  for(let i=0;i<sol.length;i++){
-    const r=tap(g,sol[i]);
-    if(r)return {ok:false,step:i,why:r==='missing'?`Move ${i+1} names ${sol[i]}, which is not a stack in this level.`:r==='blocked'?`Move ${i+1}: ${sol[i]} is still covered by ${blockerOf(g.stacks.find(x=>x.id===sol[i]),remaining(g)).id}.`:r==='locked'?`Move ${i+1}: ${sol[i]} is still locked.`:r==='gone'?`Move ${i+1}: ${sol[i]} was already sent up.`:`Move ${i+1}: the level was already over (${g.msg})`,g};
-  }
-  if(g.state==='won')return {ok:true,g};
-  return {ok:false,step:sol.length,why:g.state==='lost'?g.msg:`After ${sol.length} moves the table still has ${remaining(g).length} stacks.`,g};
-}
-function solve(lv,limit){
-  const g0=newGame(lv),seen=new Set();let nodes=0;const t0=Date.now();
-  function key(g){return g.stacks.map(s=>s.gone?'1':(s.lockN?String(s.lockN):'0')).join('')+'|'+g.poles.map(p=>p.done?'x':p.fill).join(',')+'|'+g.buffer.slice().sort().join(',');}
-  function rec(g){
-    if(g.state==='won')return g.moves.slice();
-    if(g.state!=='play')return null;
-    if(++nodes>limit||Date.now()-t0>6000)return null;
-    const k=key(g);if(seen.has(k))return null;seen.add(k);
-    const act=new Set();for(let q=0;q<g.n;q++){const p=activeOf(g,q);if(p)act.add(p.color);}
-    const cand=remaining(g).filter(s=>!canTap(g,s)).sort((a,b)=>(act.has(b.color)-act.has(a.color))||(b.left-a.left));
-    for(const s of cand){
-      const snapS=snapGame(g);tap(g,s.id);
-      const r=rec(g);if(r)return r;
-      restoreGame(g,snapS);
-    }
-    return null;
-  }
-  const r=rec(g0);
-  return {moves:r,nodes,capped:!r&&(nodes>limit||Date.now()-t0>6000)};
-}
-
-/* ---------- checks ---------- */
-function check(lv,all){
-  const out=[],bad=(t)=>out.push({k:'bad',t}),warn=(t)=>out.push({k:'warn',t});
-  const ids=new Map();
-  (lv.stacks||[]).forEach(s=>ids.set(s.id,(ids.get(s.id)||0)+1));
-  ids.forEach((n,id)=>{if(n>1)bad(`Stack id <b>${esc(id)}</b> is used ${n} times.`);});
-  if(!lv.id)bad('The level has no id.');
-  if(all&&all.filter(o=>o.id===lv.id).length>1)warn(`Another level in the list also has the id <b>${esc(lv.id)}</b>.`);
-  if(!(lv.n_slots>=1))bad('<code>n_slots</code> (pole queues) must be 1 or more.');
-  if(!(lv.buffer_capacity>=1))bad('<code>buffer_capacity</code> (waiting slots) must be 1 or more.');
-  if(!(lv.targets||[]).length)bad('The level has no poles.');
-  if(!(lv.stacks||[]).length)bad('The table has no stacks.');
-  const tc=tally(lv);
-  tc.forEach(r=>{if(r.cards!==r.cap)bad(`<b>${cname(r.color)}</b>: ${r.cards} cards on the table, ${r.cap} spaces on ${r.color} poles.`);});
-  (lv.targets||[]).forEach((t,i)=>{if(!(t.capacity>0))bad(`Pole ${i+1} has no capacity.`);});
-  (lv.stacks||[]).forEach(s=>{
-    if(!(s.count>0))bad(`Stack <b>${esc(s.id)}</b> has no cards.`);
-    if(cidx(s.color)<0)bad(`Stack <b>${esc(s.id)}</b> has an unknown color “${esc(s.color)}”.`);
-    if(s.on_stack){const p=lv.stacks.find(o=>o.id===s.on_stack);
-      if(!p)warn(`Stack <b>${esc(s.id)}</b> sits on <b>${esc(s.on_stack)}</b>, which does not exist.`);
-      else if(p.layer!==s.layer-1)warn(`Stack <b>${esc(s.id)}</b> sits on <b>${esc(p.id)}</b> (layer ${p.layer}) but is on layer ${s.layer}. The saved levels always use the layer just above.`);}
-  });
-  const g=newGame(lv),rem=remaining(g);
-  rem.forEach(s=>{
-    if(s.hidden&&!blockerOf(s,rem))warn(`Hidden stack <b>${esc(s.id)}</b> is not covered, so it shows its color from the start.`);
-  });
-  (lv.stacks||[]).forEach(s=>{if(s.lock>(lv.targets||[]).length)warn(`Locked stack <b>${esc(s.id)}</b> needs ${s.lock} poles cleared but the level has ${(lv.targets||[]).length}. Only the fail-safe will open it.`);});
-  if(!rem.some(s=>!canTap(g,s))&&rem.length)bad('No stack can be tapped at the start.');
-  const sol=lv.solution;
-  if(!Array.isArray(sol)||!sol.length)warn('The level has no saved solution. Play test it and press “Save as solution”, or use “Find a solution”.');
-  else{
-    const v=verify(lv);
-    if(!v.ok)bad('Saved solution fails. '+v.why);
-    const missing=(lv.stacks||[]).filter(s=>!sol.includes(s.id)).map(s=>s.id);
-    if(v.ok&&missing.length)warn(`The solution never taps ${missing.map(esc).join(', ')}. A booster or a pull cleared them.`);
-  }
-  return out;
-}
-function tally(lv){
-  const m=new Map();
-  (lv.stacks||[]).forEach(s=>{const r=m.get(s.color)||{color:s.color,cards:0,cap:0,poles:0,stacks:0};r.cards+=+s.count||0;r.stacks++;m.set(s.color,r);});
-  (lv.targets||[]).forEach(t=>{const r=m.get(t.color)||{color:t.color,cards:0,cap:0,poles:0,stacks:0};r.cap+=+t.capacity||0;r.poles++;m.set(t.color,r);});
-  return [...m.values()].sort((a,b)=>cidx(a.color)-cidx(b.color));
-}
-const statusOf=iss=>iss.some(i=>i.k==='bad')?'bad':iss.some(i=>i.k==='warn')?'warn':'ok';
 
 /* ---------- level list ---------- */
 let listStatus=[];
@@ -588,14 +70,20 @@ function selectLevel(i){
 
 /* ---------- board ---------- */
 const board=$('#board');
-const vy=y=>flipY?-y:y;
+const vy=y=>y;
 function setViewBox(){board.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);}
+/* axis-aligned extent of a (possibly tilted) card */
+function cardExtent(c){
+  const r=c.rot*Math.PI/180,hw=Math.abs(Math.cos(r))*CARD_W/2+Math.abs(Math.sin(r))*CARD_H/2,hh=Math.abs(Math.sin(r))*CARD_W/2+Math.abs(Math.cos(r))*CARD_H/2;
+  return [c.x-hw,c.y-hh,c.x+hw,c.y+hh];
+}
 function fit(){
-  const ss=L().stacks;
-  let x0=0,y0=0,x1=800,y1=600;
-  if(ss.length){x0=Infinity;y0=Infinity;x1=-Infinity;y1=-Infinity;
-    ss.forEach(s=>{const y=vy(s.y);x0=Math.min(x0,s.x-s.w/2);x1=Math.max(x1,s.x+s.w/2);y0=Math.min(y0,y-s.h/2);y1=Math.max(y1,y+s.h/2);});}
-  const pad=80,r=board.getBoundingClientRect(),ar=(r.width||800)/(r.height||600);
+  const lv=L(),chains=buildChains(lv.stacks,layoutOpts);
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  const grow=b=>{x0=Math.min(x0,b[0]);y0=Math.min(y0,b[1]);x1=Math.max(x1,b[2]);y1=Math.max(y1,b[3]);};
+  lv.stacks.forEach(s=>{cardsOf(s,chains.get(s.id),layoutOpts).forEach(c=>grow(cardExtent(c)));const h=hitBox(s);grow([h.x0,h.y0,h.x1,h.y1]);});
+  if(!isFinite(x0)){x0=0;y0=0;x1=800;y1=600;}
+  const pad=60,r=board.getBoundingClientRect(),ar=(r.width||800)/(r.height||600);
   let w=x1-x0+pad*2,h=y1-y0+pad*2;
   if(w/h<ar)w=h*ar;else h=w/ar;
   view.w=w;view.h=h;view.x=(x0+x1)/2-w/2;view.y=(y0+y1)/2-h/2;setViewBox();
@@ -619,50 +107,54 @@ function renderBoard(){
   let d='';for(let x=gx0;x<=gx1;x+=step)d+=`M${x} ${gy0}V${gy1}`;for(let y=gy0;y<=gy1;y+=step)d+=`M${gx0} ${y}H${gx1}`;
   el('path',{d,class:'grid'},g0);
   el('path',{d:`M${gx0} 0H${gx1}M0 ${gy0}V${gy1}`,class:'axis'},g0);
+  if(refImg)el('image',{href:refImg.src,x:refImg.x,y:refImg.y,width:refImg.w,height:refImg.w*refImg.ar,opacity:refImg.opacity,class:'refimg'},board);
   const lv=L();
   const play=mode==='play'&&game;
+  const chains=buildChains(lv.stacks,layoutOpts);
   const list=play?game.stacks.filter(s=>!s.gone):lv.stacks;
-  const order=list.map((s,i)=>({s,i})).sort((a,b)=>(a.s.layer-b.s.layer)||(a.i-b.i)).map(o=>o.s);
+  const idx=new Map(lv.stacks.map((s,i)=>[s.id,i]));
+  const order=list.slice().sort((a,b)=>(a.layer-b.layer)||(idx.get(a.id)-idx.get(b.id)));
   const startG=play?game:newGame(lv),rem=remaining(startG);
   const solIdx=new Map();(lv.solution||[]).forEach((id,i)=>{if(!solIdx.has(id))solIdx.set(id,i+1);});
-  const layerG=el('g',{},board);
+  const layerG=el('g',{},board),over=el('g',{},board);
   order.forEach(s=>{
-    const src=play?s:lv.stacks.find(o=>o.id===s.id)||s;
+    const src=lv.stacks.find(o=>o.id===s.id)||s;
     const gs=startG.stacks.find(o=>o.id===s.id);
     const blocked=gs&&!gs.gone&&!!blockerOf(gs,rem);
     const hiddenNow=src.hidden&&(play?!(gs&&gs.revealed):false);
     const lockN=play?(gs?gs.lockN:0):(+src.lock||0);
-    const count=play?gs.left:src.count;
-    const cx=+src.x||0,cy=vy(+src.y||0),w=+src.w||0,h=+src.h||0;
+    const count=play?gs.left:(+src.count||0);
+    const cards=cardsOf(src,chains.get(src.id),layoutOpts,count);
     const cls=['stk'];if(blocked&&(showFree||play))cls.push('blocked');if(!blocked&&showFree&&!play)cls.push('free');if(!play&&sel.has(s.id))cls.push('sel');
-    const g=el('g',{class:cls.join(' '),'data-id':s.id,transform:`translate(${cx} ${cy})`},layerG);
+    const g=el('g',{class:cls.join(' '),'data-id':s.id},layerG);
     el('title',{},g).textContent=`${s.id} · ${cname(src.color)} · ${count} cards · layer ${src.layer}${src.hidden?' · hidden':''}${lockN?' · locked '+lockN:''}${blocked?' · covered':''}`;
-    el('rect',{class:'body '+(hiddenNow?'fh':fcls(src.color)),x:-w/2,y:-h/2,width:w,height:h,rx:Math.min(22,w/6)},g);
-    if(src.hidden&&!hiddenNow)el('rect',{x:-w/2,y:-h/2,width:w,height:h,rx:Math.min(22,w/6),fill:'url(#hatch)','pointer-events':'none'},g);
-    // a small card fan to hint at the spread
-    const dir=(+src.spread_direction||1),ang=(+src.spread_angle||0)*Math.PI/180;
-    const ux=Math.cos(ang)*dir,uy=(flipY?-1:1)*Math.sin(ang)*dir;
-    if(src.spread!==false&&!hiddenNow){
-      const len=Math.max(0,Math.min(w,h)>0?Math.abs(ux)*(w-60)/2+Math.abs(uy)*(h-80)/2:0);
-      const L2=Math.max(18,len*.55),ox=Math.abs(uy)>Math.abs(ux)?w*.3:0,oy=Math.abs(uy)>Math.abs(ux)?0:h*.3;
-      const ex=ox+ux*L2,ey=oy+uy*L2;
-      el('path',{class:'arrow',d:`M${ox-ux*L2} ${oy-uy*L2}L${ex} ${ey}M${ex-ux*14+uy*10} ${ey-uy*14-ux*10}L${ex} ${ey}L${ex-ux*14-uy*10} ${ey-uy*14+ux*10}`},g);
+    const fill=hiddenNow?'fh':fcls(src.color);
+    let top=null;
+    cards.forEach((c,k)=>{
+      const cg=el('g',{class:k===cards.length-1?'cardg top':'cardg',transform:`translate(${+c.x.toFixed(2)} ${+c.y.toFixed(2)})${c.rot?` rotate(${c.rot})`:''}`},g);
+      el('rect',{class:'card '+fill,x:-CARD_W/2,y:-CARD_H/2,width:CARD_W,height:CARD_H,rx:20},cg);
+      el('rect',{class:'rim',x:-CARD_W/2+11,y:-CARD_H/2+11,width:CARD_W-22,height:CARD_H-22,rx:13},cg);
+      top=cg;
+    });
+    if(top){
+      if(src.hidden&&!hiddenNow)el('rect',{x:-CARD_W/2,y:-CARD_H/2,width:CARD_W,height:CARD_H,rx:20,fill:'url(#hatch)','pointer-events':'none'},top);
+      if(hiddenNow)el('text',{class:'q',x:0,y:0},top).textContent='?';
+      else{el('circle',{class:'hole',cx:0,cy:0,r:30},top);el('text',{class:'cnt',x:0,y:0},top).textContent=count;}
+      el('text',{class:'meta',x:-CARD_W/2+14,y:-CARD_H/2+30},top).textContent=s.id;
+      if(lockN>0){
+        el('rect',{class:'ice',x:-CARD_W/2+6,y:-CARD_H/2+6,width:CARD_W-12,height:CARD_H-12,rx:16},top);
+        const b=el('g',{class:'lockb',transform:`translate(${CARD_W/2-26} ${CARD_H/2-26})`},top);
+        el('circle',{r:24},b);el('text',{x:0,y:1},b).textContent=lockN;
+      }
+      if(showOrder&&!play&&solIdx.has(s.id)){
+        const b=el('g',{transform:`translate(${-CARD_W/2+24} ${CARD_H/2-24})`},top);
+        el('circle',{class:'ordc',r:19},b);el('text',{class:'ord',x:0,y:1},b).textContent=solIdx.get(s.id);
+      }
     }
-    if(hiddenNow)el('text',{class:'q',x:0,y:0},g).textContent='?';
-    else el('text',{class:'cnt',x:0,y:0},g).textContent=count;
-    const meta=el('text',{class:'meta',x:-w/2+10,y:-h/2+24},g);meta.textContent=s.id+(play?'':' · L'+src.layer)+(src.fan?' · fan':'');
-    if(lockN>0){
-      el('rect',{class:'ice',x:-w/2+6,y:-h/2+6,width:w-12,height:h-12,rx:14},g);
-      const b=el('g',{class:'lockb',transform:`translate(${w/2-28} ${h/2-28})`},g);
-      el('circle',{r:24},b);el('text',{x:0,y:1},b).textContent=lockN;
-    }
-    if(showOrder&&!play&&solIdx.has(s.id)){
-      const b=el('g',{transform:`translate(${-w/2+24} ${h/2-24})`},g);
-      el('circle',{class:'ordc',r:19},b);el('text',{class:'ord',x:0,y:1},b).textContent=solIdx.get(s.id);
-    }
+    if(showBoxes||(!play&&sel.has(s.id))){const h=hitBox(src);el('rect',{class:'foot'+(sel.has(s.id)?' on':''),x:h.x0,y:h.y0,width:h.x1-h.x0,height:h.y1-h.y0},over);}
   });
   // on_stack links for the selection
-  if(!play)lv.stacks.forEach(s=>{if(s.on_stack&&sel.has(s.id)){const p=lv.stacks.find(o=>o.id===s.on_stack);if(p)el('line',{class:'link',x1:s.x,y1:vy(s.y),x2:p.x,y2:vy(p.y)},board);}});
+  if(!play)lv.stacks.forEach(s=>{if(s.on_stack&&sel.has(s.id)){const p=lv.stacks.find(o=>o.id===s.on_stack);if(p)el('line',{class:'link',x1:s.x,y1:s.y,x2:p.x,y2:p.y},over);}});
 }
 
 /* ---------- queues + waiting slots ---------- */
@@ -735,6 +227,26 @@ function renderPane(){
         <li class="${lv.targets.some(t=>t.hidden)?'ok':''}"><b>Hidden Color Pole</b>: ${lv.targets.filter(t=>t.hidden).length} <code>targets[].hidden</code></li>
         <li class="${lv.stacks.some(s=>s.lock)?'ok':''}"><b>Locked Card Stack</b>: ${lv.stacks.filter(s=>s.lock).length} <code>stacks[].lock</code></li>
       </ul>
+      <h3>Card drawing</h3>
+      <p class="hint">How the editor lays out the cards of a stack. This only changes the picture, never the level JSON. The defaults are matched to the game build's level 5.</p>
+      <div class="fields">
+        ${fld('Card gap in a spread','',`<select id="lyGapMode"><option value="box"${layoutOpts.gapMode==='box'?' selected':''}>Fill the w × h box</option><option value="fixed"${layoutOpts.gapMode==='fixed'?' selected':''}>Fixed gap</option></select>`)}
+        ${fld('Fixed gap (units)','',num('lyGap',layoutOpts.gap,'min="0"'+(layoutOpts.gapMode==='fixed'?'':' disabled')))}
+        ${fld('Fan: first card tilt (°)','',num('lyFanStart',layoutOpts.fanStart))}
+        ${fld('Fan: tilt per card (°)','',num('lyFanStep',layoutOpts.fanStep,'step="0.5"'))}
+        ${fld('Fan: gap per card (units)','',num('lyFanGap',layoutOpts.fanGap))}
+        ${fld('Pile join distance (units)','',num('lyChain',layoutOpts.chainDist,'min="0"'))}
+      </div>
+      <div class="btns"><button class="btn" type="button" id="lyReset">Reset drawing</button></div>
+      <h3>Game screenshot overlay</h3>
+      <p class="hint">Put a screenshot from the game behind the table to line the layout up. It stays on this page and is not saved.</p>
+      <div class="btns"><input type="file" id="refFile" accept="image/*" aria-label="Game screenshot"></div>
+      ${refImg?`<div class="fields" style="margin-top:8px">
+        ${fld('Opacity','',`<input type="range" id="refOp" min="0" max="1" step="0.05" value="${refImg.opacity}">`,'full')}
+        ${fld('Width (units)','',num('refW',Math.round(refImg.w)))}
+        ${fld('Left x','',num('refX',Math.round(refImg.x)))}
+        ${fld('Top y','',num('refY',Math.round(refImg.y)))}
+      </div><div class="btns"><button class="btn" type="button" id="refClear">Remove screenshot</button></div>`:''}
       <h3>Shortcuts</h3>
       <div class="keys"><kbd>A</kbd><span>Add a stack</span><kbd>T</kbd><span>Add a stack on top of the selected one</span><kbd>Ctrl D</kbd><span>Duplicate</span><kbd>Del</kbd><span>Delete</span><kbd>[ ]</kbd><span>Layer down, up</span><kbd>Arrows</kbd><span>Nudge by the snap step, Shift for ×5</span><kbd>H</kbd><span>Toggle hidden</span><kbd>Shift drag</kbd><span>Box select</span><kbd>Wheel</kbd><span>Zoom, drag the table to pan</span><kbd>P</kbd><span>Switch Edit and Play test</span></div>`;
   }else if(tab==='stack'){
@@ -756,8 +268,8 @@ function renderPane(){
       <div class="fields">
         ${fld('Id','id',`<input id="sId" value="${esc(s.id)}">`)}
         ${fld('Cards','count',num('sCount',s.count,'min="1"'))}
-        ${fld('X (center)','x',num('sX',s.x))}
-        ${fld('Y (center)','y',num('sY',s.y))}
+        ${fld('X (first card)','x',num('sX',s.x))}
+        ${fld('Y (first card)','y',num('sY',s.y))}
         ${fld('Width','w',num('sW',s.w,'min="10"'))}
         ${fld('Height','h',num('sH',s.h,'min="10"'))}
         ${fld('Layer','layer',num('sLayer',s.layer,'min="0"'))}
@@ -800,7 +312,7 @@ function renderPane(){
       <div class="btns"><button class="btn" type="button" id="cPlay">Step through in Play test</button><button class="btn" type="button" id="cSolve">Find a solution</button><button class="btn" type="button" id="cClear">Clear solution</button></div>
       <div class="msg" id="solveMsg"></div>
       <h3>How the check plays the level</h3>
-      <p class="hint">Pole <i>i</i> goes to queue <i>i</i> mod <code>n_slots</code>. A stack is covered by any stack on a higher layer, of another color, whose box overlaps it (<code>x</code>, <code>y</code> are the box center). Cards with no pole wait in the slots, and the level is lost when more than <code>buffer_capacity</code> cards wait. These rules replay all 40 saved solutions from the sheet without a failure.</p>`;
+      <p class="hint">Pole <i>i</i> goes to queue <i>i</i> mod <code>n_slots</code>. A stack is covered by any stack on a higher layer, of another color, whose footprint overlaps it. The footprint is the <code>w</code> × <code>h</code> box that starts at the first card (<code>x</code>, <code>y</code>) and runs in the spread direction. Turn on Footprints to see them. Cards with no pole wait in the slots, and the level is lost when more than <code>buffer_capacity</code> cards wait. These rules replay all 40 saved solutions from the sheet without a failure.</p>`;
   }else if(tab==='json'){
     p.innerHTML=`<h2>Level JSON</h2>
       <p class="hint">Edit and press Apply, or paste a whole level here. Same format as the Level column of the sheet.</p>
@@ -873,6 +385,24 @@ function rebuildPoles(){
 const pane=$('#pane');
 pane.addEventListener('change',e=>{
   const t=e.target,lv=L(),id=t.id;
+  if(tab==='level'&&/^ly/.test(id)){
+    const v=t.value;
+    if(id==='lyGapMode')layoutOpts.gapMode=v;
+    if(id==='lyGap')layoutOpts.gap=Math.max(0,+v||0);
+    if(id==='lyFanStart')layoutOpts.fanStart=+v||0;
+    if(id==='lyFanStep')layoutOpts.fanStep=+v||0;
+    if(id==='lyFanGap')layoutOpts.fanGap=+v||0;
+    if(id==='lyChain')layoutOpts.chainDist=Math.max(0,+v||0);
+    savePrefs();renderBoard();renderPane();return;
+  }
+  if(tab==='level'&&id==='refFile'){
+    const f=t.files&&t.files[0];if(!f)return;
+    const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{
+      const ar=im.naturalHeight/im.naturalWidth,w=view.w*0.6;
+      refImg={src:r.result,ar,w,x:view.x+view.w*0.2,y:view.y+view.h*0.05,opacity:0.5};renderBoard();renderPane();};im.src=r.result;};
+    r.readAsDataURL(f);return;
+  }
+  if(tab==='level'&&/^ref/.test(id)){refInput(t);return;}
   if(tab==='level'){
     if(id==='fId'){const v=t.value.trim();if(v)lv.id=v;}
     if(id==='fSlots'||id==='pSlots')lv.n_slots=Math.max(1,int(t.value));
@@ -925,6 +455,8 @@ pane.addEventListener('click',e=>{
     if(a==='add')addStack(false);if(a==='ontop')addStack(true);if(a==='dup')dupSel();if(a==='del')delSel();if(a==='layup')layerSel(1);if(a==='laydown')layerSel(-1);return;}
   if(t.id==='mHidOn'||t.id==='mHidOff'){lv.stacks.forEach(s=>{if(sel.has(s.id))setHidden(s,t.id==='mHidOn');});commit();renderAll();return;}
   if(t.id==='autoPoles'){rebuildPoles();return;}
+  if(t.id==='lyReset'){layoutOpts=Object.assign({},LAYOUT_DEFAULTS);savePrefs();renderBoard();renderPane();return;}
+  if(t.id==='refClear'){refImg=null;renderBoard();renderPane();return;}
   if(t.id==='pAdd'){
     const used=new Set(lv.targets.map(x=>x.color));const need=tally(lv).find(r=>r.cards>r.cap);
     lv.targets.push({color:need?need.color:(lv.targets.length?lv.targets[lv.targets.length-1].color:'color_0'),capacity:int(($('#pDefCap')||{}).value)||18});
@@ -955,8 +487,14 @@ pane.addEventListener('click',e=>{
   if(t.id==='jDl'){download(lv.id+'.json',JSON.stringify(lv,null,2));return;}
   if(t.id==='jRevert'){const o=origById(lv.id);if(!o){toast('This level is not in the sheet.');return;}levels[cur]=clone(o);sel.clear();commit();fit();renderAll();toast('Back to the sheet version. Undo to get your edits back.');return;}
 });
+function refInput(t){
+  if(!refImg)return;const v=+t.value;
+  if(t.id==='refOp')refImg.opacity=v;if(t.id==='refW'&&v>0)refImg.w=v;if(t.id==='refX')refImg.x=v;if(t.id==='refY')refImg.y=v;
+  renderBoard();
+}
 pane.addEventListener('input',e=>{
   const t=e.target;
+  if(tab==='level'&&/^ref(Op|W|X|Y)$/.test(t.id)){refInput(t);return;}
   if(tab==='stack'&&/^s[XYWH]$|^sLayer$|^sAng$/.test(t.id)){
     const s=L().stacks.find(o=>sel.has(o.id));if(!s)return;
     const v=int(t.value);({sX:()=>s.x=v,sY:()=>s.y=v,sW:()=>s.w=Math.max(10,v),sH:()=>s.h=Math.max(10,v),sLayer:()=>s.layer=Math.max(0,v),sAng:()=>s.spread_angle=v})[t.id]();
@@ -965,7 +503,7 @@ pane.addEventListener('input',e=>{
 });
 
 /* ---------- board pointer ---------- */
-let drag=null;
+let drag=null,drawQueued=false;
 board.addEventListener('pointerdown',e=>{
   if(e.button!==0&&e.button!==1)return;
   const w=toWorld(e),stk=e.target.closest('.stk');
@@ -1003,9 +541,8 @@ board.addEventListener('pointermove',e=>{
     drag.starts.forEach(o=>{
       o.s.x=Math.round((o.x+dx)/snap)*snap;
       o.s.y=Math.round((o.y+(flipY?-dy:dy))/snap)*snap;
-      const g=board.querySelector(`.stk[data-id="${CSS.escape(o.s.id)}"]`);
-      if(g)g.setAttribute('transform',`translate(${o.s.x} ${vy(o.s.y)})`);
     });
+    if(!drawQueued){drawQueued=true;requestAnimationFrame(()=>{drawQueued=false;renderBoard();});}
   }else if(drag.kind==='marq'){
     const x=Math.min(w.x,drag.w0.x),y=Math.min(w.y,drag.w0.y);
     Object.entries({x,y,width:Math.abs(w.x-drag.w0.x),height:Math.abs(w.y-drag.w0.y)}).forEach(([k,v])=>drag.rect.setAttribute(k,v));
@@ -1102,7 +639,7 @@ $('#tLayUp').addEventListener('click',()=>layerSel(1));$('#tLayDown').addEventLi
 $('#snap').addEventListener('change',e=>{snap=+e.target.value;savePrefs();});
 $('#tFree').addEventListener('click',e=>{showFree=!showFree;e.currentTarget.setAttribute('aria-pressed',String(showFree));savePrefs();renderBoard();});
 $('#tOrder').addEventListener('click',e=>{showOrder=!showOrder;e.currentTarget.setAttribute('aria-pressed',String(showOrder));savePrefs();renderBoard();});
-$('#tFlip').addEventListener('click',e=>{flipY=!flipY;e.currentTarget.setAttribute('aria-pressed',String(flipY));savePrefs();fit();renderBoard();});
+$('#tBoxes').addEventListener('click',e=>{showBoxes=!showBoxes;e.currentTarget.setAttribute('aria-pressed',String(showBoxes));savePrefs();renderBoard();});
 $('#tCopy').addEventListener('click',()=>copyText(JSON.stringify(L(),null,2),'Level JSON copied.'));
 $('#zIn').addEventListener('click',()=>{zoom(1/1.25);renderBoard();});
 $('#zOut').addEventListener('click',()=>{zoom(1.25);renderBoard();});
@@ -1264,10 +801,8 @@ window.addEventListener('resize',()=>{const r=board.getBoundingClientRect();if(r
 
 load();
 $('#snap').value=String(snap);
-$('#tFlip').setAttribute('aria-pressed',String(flipY));$('#tFree').setAttribute('aria-pressed',String(showFree));$('#tOrder').setAttribute('aria-pressed',String(showOrder));
+$('#tBoxes').setAttribute('aria-pressed',String(showBoxes));$('#tFree').setAttribute('aria-pressed',String(showFree));$('#tOrder').setAttribute('aria-pressed',String(showOrder));
 refreshAllStatus();resetHistory();
 requestAnimationFrame(()=>{fit();renderAll();});
 fit();renderAll();
 window.__cs={levels:()=>levels,verify,solve,newGame,tap,check};
-})();
-</script>
