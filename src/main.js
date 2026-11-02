@@ -2,7 +2,7 @@ import './style.css';
 import ORIGINAL from './data/levels.json';
 import {esc,clone,COLORS,ckey,cidx,cname,fcls,bcls} from './util.js';
 import {CARD_W,CARD_H,LAYOUT_DEFAULTS,hitBox,buildChains,cardsOf} from './layout.js';
-import {blockerOf,newGame,activeOf,remaining,tap,canTap,boosterShuffle,boosterRemove,snapGame,restoreGame,verify,solve,check,tally,statusOf} from './engine.js';
+import {blockerOf,newGame,activeOf,remaining,tap,canTap,boosterShuffle,boosterMagnet,snapGame,restoreGame,verify,solve,check,tally,statusOf} from './engine.js';
 
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
@@ -16,7 +16,7 @@ let undo=[],redo=[],lastSnap='';
 const view={x:-300,y:-300,w:1400,h:1000};
 let flipY=false,showFree=true,showOrder=false,showBoxes=false,snap=10;
 let layoutOpts=Object.assign({},LAYOUT_DEFAULTS),refImg=null;
-let game=null,gameHist=[],booster=null,boostUse={hand:0,shuffle:0,remove:0},replayIdx=0;
+let game=null,gameHist=[],booster=null,boostUse={hand:0,shuffle:0,magnet:0},replayIdx=0;
 let issuesCache=[];
 const L=()=>levels[cur];
 
@@ -573,7 +573,7 @@ function setMode(m){
   if(m==='play')startGame();else{game=null;booster=null;$('#banner').hidden=true;}
   renderAll();
 }
-function startGame(){game=newGame(L());gameHist=[];booster=null;boostUse={hand:0,shuffle:0,remove:0};replayIdx=0;syncBoost();banner();}
+function startGame(){game=newGame(L());gameHist=[];booster=null;boostUse={hand:0,shuffle:0,magnet:0};replayIdx=0;syncBoost();banner();}
 function pushHist(){gameHist.push({g:snapGame(game),b:clone(boostUse)});}
 function banner(text,kind){
   const b=$('#banner');
@@ -593,18 +593,18 @@ function playTap(id,node){
   syncBoost();renderBoard();renderTop();
 }
 function syncBoost(){
-  $('#bHand').setAttribute('aria-pressed',String(booster==='hand'));$('#bRemove').setAttribute('aria-pressed',String(booster==='remove'));
-  $('#bHandN').textContent=boostUse.hand+' used';$('#bShuffleN').textContent=boostUse.shuffle+' used';$('#bRemoveN').textContent=boostUse.remove+' used';
+  $('#bHand').setAttribute('aria-pressed',String(booster==='hand'));$('#bMagnet').setAttribute('aria-pressed',String(booster==='magnet'));
+  $('#bHandN').textContent=boostUse.hand+' used';$('#bShuffleN').textContent=boostUse.shuffle+' used';$('#bMagnetN').textContent=boostUse.magnet+' used';
   $('#pUndo').disabled=!gameHist.length;
   $('#pSave').disabled=!game||!game.moves.length;
 }
 $('#bHand').addEventListener('click',()=>{if(!game||game.state!=='play')return;booster=booster==='hand'?null:'hand';syncBoost();banner(booster?'Hand: tap any stack.':'');});
-$('#bRemove').addEventListener('click',()=>{if(!game||game.state!=='play')return;booster=booster==='remove'?null:'remove';syncBoost();banner(booster?'Remove: tap any pole in the queues.':'');});
+$('#bMagnet').addEventListener('click',()=>{if(!game||game.state!=='play')return;booster=booster==='magnet'?null:'magnet';syncBoost();banner(booster?'Magnet: tap any pole in the queues.':'');});
 $('#bShuffle').addEventListener('click',()=>{if(!game||game.state!=='play')return;pushHist();boosterShuffle(game);boostUse.shuffle++;booster=null;syncBoost();banner();renderBoard();renderTop();});
 $('#queues').addEventListener('click',e=>{
   const b=e.target.closest('[data-pole]');if(!b)return;const i=+b.dataset.pole;
   if(mode==='play'){
-    if(booster==='remove'&&game.state==='play'){pushHist();boosterRemove(game,i);boostUse.remove++;booster=null;syncBoost();banner();renderBoard();renderTop();}
+    if(booster==='magnet'&&game.state==='play'){pushHist();boosterMagnet(game,i);boostUse.magnet++;booster=null;syncBoost();banner();renderBoard();renderTop();}
     return;
   }
   selPole=i;tab='poles';renderTop();renderPane();
@@ -623,7 +623,7 @@ $('#pReplay').addEventListener('click',()=>{
 });
 $('#pSave').addEventListener('click',()=>{
   if(!game||!game.moves.length)return;
-  const used=boostUse.hand+boostUse.shuffle+boostUse.remove;
+  const used=boostUse.hand+boostUse.shuffle+boostUse.magnet;
   L().solution=game.moves.slice();commit();refreshChecks();
   toast(`Saved ${game.moves.length} moves as the solution.`+(used?' Boosters were used, so the check may not replay it.':''));
 });

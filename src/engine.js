@@ -87,7 +87,7 @@ export function boosterShuffle(g){
   g.queues=nq.map((q,i)=>g.queues[i].filter(x=>g.poles[x].done).concat(q));
   const c=settle(g);updateLocks(g,c);checkEnd(g);
 }
-export function boosterRemove(g,pi){
+export function boosterMagnet(g,pi){
   const p=g.poles[pi];if(!p||p.done)return;
   let need=p.cap-p.fill;
   let k=Math.min(need,g.buffer.filter(x=>x===p.color).length),take=k;

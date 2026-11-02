@@ -17,7 +17,7 @@ npm run build    # writes dist/index.html, one file that opens without a server
 
 - **Edit:** drag stacks on the table and edit every stack field, the poles and their queues, and the level settings. Undo and redo are included.
 - **Elements:** Hidden Card Stack (`stacks[].hidden`), Hidden Color Pole (`targets[].hidden`), Locked Card Stack (`stacks[].lock`).
-- **Play test:** tap stacks like in the game, use the Hand, Shuffle and Remove boosters, step through the saved solution, or save your moves as the solution.
+- **Play test:** tap stacks like in the game, use the Hand, Shuffle and Magnet boosters, step through the saved solution, or save your moves as the solution.
 - **Check:** flags color counts that don't match pole space, broken references and failing solutions. "Find a solution" searches for a winning order.
 - **JSON:** import or paste one level, a list of levels, or rows copied from the sheet. Export one level, all levels, or sheet rows that paste back into the Id and Level columns.
 - **Game screenshot overlay:** in the Level tab, put a game screenshot behind the table to check the layout.
