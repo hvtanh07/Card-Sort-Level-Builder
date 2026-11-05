@@ -7,9 +7,7 @@
      so the two read as one long pile (level 5: s4 continues s0, s9 continues s8).
    - A fan stack tilts its cards around their bottom edge, the first card tilted most. */
 export const CARD_W=150,CARD_H=206;
-export const LAYOUT_DEFAULTS={gapMode:'box',gap:22,fanGap:18,fanStart:70,fanStep:4,chainDist:40,chipT:30,lean:0,pitch:56};
-/* the game build's level 8 leans its piles about 35° (see pileAxis); the editor draws them upright by default */
-export const GAME_LEAN=35;
+export const LAYOUT_DEFAULTS={gapMode:'box',gap:22,fanGap:18,fanStart:70,fanStep:4,chainDist:40,chipT:30,lean:0,pitch:56,twist:0.25,spiralR:22};
 export const CHIP_R=CARD_W/2;
 
 export function spreadDir(s){
@@ -95,7 +93,7 @@ export function project(o,v){const p=o.pitch*Math.PI/180;return [v[0],v[1]*Math.
 export function pileAxis(root,opts){
   const o=Object.assign({},LAYOUT_DEFAULTS,opts);
   let A=[0,0,1];
-  if(root.spread!==false&&!root.fan){const [hx,hy]=spreadDir(root),l=o.lean*Math.PI/180;A=[Math.sin(l)*hx,Math.sin(l)*hy,Math.cos(l)];}
+  if(o.lean&&root.spread!==false&&!root.fan){const [hx,hy]=spreadDir(root),l=o.lean*Math.PI/180;A=[Math.sin(l)*hx,Math.sin(l)*hy,Math.cos(l)];}
   const st=project(o,A.map(c=>c*o.chipT));
   const u=norm(Math.abs(A[2])>0.999?[1,0,0]:cross(A,[0,0,1])),v=norm(cross(A,u));
   return {A,step:st,face:faceEllipse(project(o,u),project(o,v),CHIP_R)};
@@ -107,17 +105,23 @@ export function faceEllipse(bu,bv,r){
   const l1=tr+df,l2=Math.max(0,tr-df),rot=Math.atan2(l1-a,b||1e-9)*180/Math.PI;
   return {rx:r*Math.sqrt(l1),ry:r*Math.sqrt(l2),rot:Math.abs(b)<1e-9?(a>=d?0:90):rot};
 }
+/* Spiral piles (how the editor draws every stack since 2026-11-05, as the designer asked):
+   - Every pile is an upright stack of chips. Each chip is shifted a little on the table so the pile twists like a spiral.
+   - spread_direction picks where the spiral starts: 1 starts swinging from the right side, -1 from the left.
+   - spread_angle picks how much it twists: each chip turns spread_angle × twist degrees further round the spiral,
+     so 0 is a straight stack and a negative angle twists the other way.
+   - The bottom chip stays at x, y, and a stack on top of another carries the spiral on (buildChains). */
+export function spiralTurn(root,opts){const o=Object.assign({},LAYOUT_DEFAULTS,opts);return (+root.spread_angle||0)*o.twist;}
 /* chip placements for one stack: [{x, y, j}] where (x, y) is the screen center of the chip's base and j its index in the pile */
 export function chipsOf(s,chain,opts,count){
   const o=Object.assign({},LAYOUT_DEFAULTS,opts);
   const root=chain?chain.root:s,start=chain?chain.start:0,n=count==null?(+s.count||0):count;
-  const out=[];
-  if(root.fan){
-    const [ux,uy]=spreadDir(root);
-    for(let k=0;k<n;k++){const j=start+k;out.push({x:root.x+ux*o.fanGap*3*j,y:root.y+uy*o.fanGap*3*j,j});}
-    return out;
-  }
   const {step}=pileAxis(root,o);
-  for(let k=0;k<n;k++){const j=start+k;out.push({x:root.x+step[0]*j,y:root.y+step[1]*j,j});}
+  const R=root.spread===false?0:o.spiralR,turn=spiralTurn(root,o)*Math.PI/180,p0=(+root.spread_direction)===-1?Math.PI:0;
+  const out=[];
+  for(let k=0;k<n;k++){
+    const j=start+k,ph=p0+turn*j,off=project(o,[R*(Math.cos(ph)-Math.cos(p0)),R*(Math.sin(ph)-Math.sin(p0)),0]);
+    out.push({x:root.x+step[0]*j+off[0],y:root.y+step[1]*j+off[1],j});
+  }
   return out;
 }

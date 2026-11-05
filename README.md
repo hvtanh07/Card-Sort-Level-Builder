@@ -32,10 +32,10 @@ Layout, matched to the game build's level 8 (chip theme):
 
 - The screen is drawn like the game: the poles in a grid above the table (one column per queue, the first pole of each queue in the bottom row), the waiting tray under them, then the table.
 - `x`, `y` is where the bottom chip of a pile stands on the table. Chips are 150 level units across, and y grows downward.
-- A pile is a column of chips that leans away from upright toward `spread_angle` / `spread_direction`: angle 0 leans right (left with direction -1), 90 leans toward the player so the column is seen almost end on, and 40 sits in between. The lean, the camera pitch and the chip thickness are estimates and can be changed in the Level tab under Chip drawing.
+- Every pile is drawn as an upright stack of chips that twists like a spiral. `spread_direction` picks where the spiral starts (1 from the right, -1 from the left), and `spread_angle` picks how much it twists: each chip turns `spread_angle` × 0.25 degrees further round, so 0 is a straight stack and a negative angle twists the other way. The twist and swing can be changed in the Level tab under Chip drawing. The game build of level 8 leaned its piles instead; the spiral is the designer's new look.
 - The `w` × `h` box starts at the bottom chip and runs in the spread direction. This footprint decides which stack covers which. Turn on **Footprints** to see it.
-- A stack on a higher layer, with the same spread, within 40 units of another stack (or linked by `on_stack`), carries on that stack's column. In level 8, `s01` continues `s00`.
-- A `fan` stack lays its chips flat in a row. The game has no fan stack to compare with yet.
+- A stack on a higher layer, with the same spread, within 40 units of another stack (or linked by `on_stack`), carries on that stack's spiral. In level 8, `s01` continues `s00`.
+- `fan` stacks are drawn the same way as the others.
 
 Rules:
 

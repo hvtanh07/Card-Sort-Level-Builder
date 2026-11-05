@@ -25,13 +25,13 @@ function load(){
   try{saved=JSON.parse(localStorage.getItem(STORE)||'null');}catch(e){}
   if(saved&&Array.isArray(saved.levels)&&saved.levels.length){levels=saved.levels;cur=Math.min(saved.cur|0,levels.length-1);}
   else{levels=clone(ORIGINAL);cur=0;}
-  try{const p=JSON.parse(localStorage.getItem(STORE+'.prefs')||'{}');if(p.snap)snap=p.snap;if(p.showBoxes)showBoxes=true;if(p.layout){if(p.layoutV!==2)delete p.layout.lean;layoutOpts=Object.assign({},LAYOUT_DEFAULTS,p.layout);}if(p.showFree===false)showFree=false;if(p.showOrder)showOrder=true;}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem(STORE+'.prefs')||'{}');if(p.snap)snap=p.snap;if(p.showBoxes)showBoxes=true;if(p.layout){if(p.layoutV!==3)delete p.layout.lean;layoutOpts=Object.assign({},LAYOUT_DEFAULTS,p.layout);}if(p.showFree===false)showFree=false;if(p.showOrder)showOrder=true;}catch(e){}
 }
 function persist(){
   try{localStorage.setItem(STORE,JSON.stringify({levels,cur}));$('#saveNote').textContent='Changes are saved in this browser.';}
   catch(e){$('#saveNote').textContent='This browser is not saving changes. Export before you close the page.';}
 }
-function savePrefs(){try{localStorage.setItem(STORE+'.prefs',JSON.stringify({snap,showFree,showOrder,showBoxes,layout:layoutOpts,layoutV:2}));}catch(e){}}
+function savePrefs(){try{localStorage.setItem(STORE+'.prefs',JSON.stringify({snap,showFree,showOrder,showBoxes,layout:layoutOpts,layoutV:3}));}catch(e){}}
 const origById=id=>ORIGINAL.find(o=>o.id===id);
 const isChanged=lv=>{const o=origById(lv.id);return !o||JSON.stringify(o)!==JSON.stringify(lv);};
 
@@ -272,13 +272,13 @@ function renderPane(){
         <li class="${lv.stacks.some(s=>s.lock)?'ok':''}"><b>Locked Chip Stack</b>: ${lv.stacks.filter(s=>s.lock).length} <code>stacks[].lock</code></li>
       </ul>
       <h3>Chip drawing</h3>
-      <p class="hint">How the editor draws the chip piles. This only changes the picture, never the level JSON. Piles are drawn as vertical stacks. Set the lean to 35 to see them tilted like the game build's level 8.</p>
+      <p class="hint">How the editor draws the chip piles. This only changes the picture, never the level JSON. Every pile is an upright stack that twists like a spiral: <code>spread_direction</code> picks the side the spiral starts from, and <code>spread_angle</code> picks how much it twists (0 is straight).</p>
       <div class="fields">
-        ${fld('Pile lean from upright (°, 0 = vertical, 35 = game build)','',num('lyLean',layoutOpts.lean,'min="0" max="89"'))}
+        ${fld('Twist per chip, per 1° of spread_angle (°)','',num('lyTwist',layoutOpts.twist,'min="0" step="0.05"'))}
+        ${fld('Spiral swing (units)','',num('lySpiralR',layoutOpts.spiralR,'min="0"'))}
         ${fld('Camera pitch (°)','',num('lyPitch',layoutOpts.pitch,'min="10" max="90"'))}
         ${fld('Chip thickness (units)','',num('lyChipT',layoutOpts.chipT,'min="1"'))}
-        ${fld('Fan: gap per chip (units)','',num('lyFanGap',layoutOpts.fanGap))}
-        ${fld('Pile join distance (units)','',num('lyChain',layoutOpts.chainDist,'min="0"'))}
+                ${fld('Pile join distance (units)','',num('lyChain',layoutOpts.chainDist,'min="0"'))}
       </div>
       <div class="btns"><button class="btn" type="button" id="lyReset">Reset drawing</button></div>
       <h3>Game screenshot overlay</h3>
@@ -430,7 +430,8 @@ pane.addEventListener('change',e=>{
   const t=e.target,lv=L(),id=t.id;
   if(tab==='level'&&/^ly/.test(id)){
     const v=t.value;
-    if(id==='lyLean')layoutOpts.lean=Math.min(89,Math.max(0,+v||0));
+    if(id==='lyTwist')layoutOpts.twist=Math.max(0,+v||0);
+    if(id==='lySpiralR')layoutOpts.spiralR=Math.max(0,+v||0);
     if(id==='lyPitch')layoutOpts.pitch=Math.min(90,Math.max(10,+v||0));
     if(id==='lyChipT')layoutOpts.chipT=Math.max(1,+v||0);
     if(id==='lyFanGap')layoutOpts.fanGap=+v||0;
