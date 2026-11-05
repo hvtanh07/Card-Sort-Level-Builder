@@ -284,7 +284,7 @@ function renderPane(){
       <tr><th>Total</th><th>${lv.stacks.length}</th><th>${cards}</th><th>${lv.targets.length}</th><th>${lv.targets.reduce((a,t)=>a+(+t.capacity||0),0)}</th></tr></tbody></table>
       <p class="hint">${layers} layer${layers===1?'':'s'}. Chips of each color must exactly fill the poles of that color.</p>
       <div class="btns"><button class="btn" id="autoPoles" type="button">Rebuild poles from chips</button></div>
-      <p class="hint">Makes one pole of 18 for every 18 chips of a color and deals them across the queues. Undo brings the old poles back.</p>
+      <p class="hint">Makes one pole of ${levelCap(lv)} for every ${levelCap(lv)} chips of a color and deals them across the queues. Undo brings the old poles back.</p>
       <h3>Elements in this level</h3>
       <ul class="issues">
         <li class="${lv.stacks.some(s=>s.hidden)?'ok':''}"><b>Hidden Chip Stack</b>: ${lv.stacks.filter(s=>s.hidden).length} <code>stacks[].hidden</code></li>
@@ -356,7 +356,7 @@ function renderPane(){
     const n=Math.max(1,lv.n_slots|0);
     p.innerHTML=`<h2>Poles</h2>
       <p class="hint">Pole order matters. Pole 1 goes to queue 1, pole 2 to queue 2, and so on, wrapping after queue ${n}. The first pole in each queue starts at the bottom.</p>
-      <div class="fields" style="margin:8px 0">${fld('Pole queues','n_slots',num('pSlots',lv.n_slots,'min="1" max="8"'))}${fld('Default capacity','',num('pDefCap',18,'min="1"'))}</div>
+      <div class="fields" style="margin:8px 0">${fld('Pole queues','n_slots',num('pSlots',lv.n_slots,'min="1" max="8"'))}${fld('Default capacity','',num('pDefCap',levelCap(lv),'min="1"'))}</div>
       <div id="poleRows">${lv.targets.map((t,i)=>`<div class="prow${selPole===i?' on':''}" data-row="${i}">
         <span class="pc ${bcls(t.color)}"></span>
         <select data-pf="color" aria-label="Pole ${i+1} color">${COLORS.map((c,k)=>`<option value="${ckey(k)}"${t.color===ckey(k)?' selected':''}>${k} ${c}</option>`).join('')}${cidx(t.color)<0?`<option selected>${esc(t.color)}</option>`:''}</select>
@@ -434,8 +434,10 @@ function renameStack(lv,s,nid){
   if(sel.has(old)){sel.delete(old);sel.add(nid);}
   return true;
 }
+/* the pole size this level uses: its first pole's capacity, 18 when it has none */
+function levelCap(lv){return (lv.targets&&lv.targets[0]&&+lv.targets[0].capacity)||18;}
 function rebuildPoles(){
-  const lv=L(),n=Math.max(1,lv.n_slots|0),cap=int(($('#pDefCap')||{}).value)||18;
+  const lv=L(),n=Math.max(1,lv.n_slots|0),cap=int(($('#pDefCap')||{}).value)||levelCap(lv);
   const by=new Map();lv.stacks.forEach(s=>by.set(s.color,(by.get(s.color)||0)+(+s.count||0)));
   const colors=[...by.keys()].sort((a,b)=>cidx(a)-cidx(b));
   const groups=colors.map(c=>{const out=[];let left=by.get(c);while(left>0){out.push({color:c,capacity:Math.min(cap,left)});left-=cap;}return out;});
@@ -522,7 +524,7 @@ pane.addEventListener('click',e=>{
   if(t.id==='refClear'){refImg=null;renderBoard();renderPane();return;}
   if(t.id==='pAdd'){
     const used=new Set(lv.targets.map(x=>x.color));const need=tally(lv).find(r=>r.cards>r.cap);
-    lv.targets.push({color:need?need.color:(lv.targets.length?lv.targets[lv.targets.length-1].color:'color_0'),capacity:int(($('#pDefCap')||{}).value)||18});
+    lv.targets.push({color:need?need.color:(lv.targets.length?lv.targets[lv.targets.length-1].color:'color_0'),capacity:int(($('#pDefCap')||{}).value)||levelCap(lv)});
     selPole=lv.targets.length-1;commit();renderAll();return;}
   if(t.id==='pShuffle'){const a=lv.targets;for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}commit();renderAll();return;}
   const pop=t.closest('[data-pop]');

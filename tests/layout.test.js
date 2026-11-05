@@ -34,9 +34,9 @@ describe('chip piles are drawn as upright spirals', () => {
     const red = chipsOf(s8('s07'), chains.get('s07'));
     expect(red[0]).toMatchObject({x: s8('s07').x, y: s8('s07').y});
     const yellow = chipsOf(s8('s08'), chains.get('s08'));
-    const whole = chipsOf({...s8('s07'), count: 10}, chains.get('s07'));
-    expect(yellow[0].x).toBeCloseTo(whole[5].x);
-    expect(yellow[0].y).toBeCloseTo(whole[5].y);
+    const n = s8('s07').count, whole = chipsOf({...s8('s07'), count: n + s8('s08').count}, chains.get('s07'));
+    expect(yellow[0].x).toBeCloseTo(whole[n].x);
+    expect(yellow[0].y).toBeCloseTo(whole[n].y);
   });
   it('spread_angle 0 is a straight stack', () => {
     const c = chipsOf(s8('s07'), chains.get('s07'));
