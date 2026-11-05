@@ -25,13 +25,13 @@ function load(){
   try{saved=JSON.parse(localStorage.getItem(STORE)||'null');}catch(e){}
   if(saved&&Array.isArray(saved.levels)&&saved.levels.length){levels=saved.levels;cur=Math.min(saved.cur|0,levels.length-1);}
   else{levels=clone(ORIGINAL);cur=0;}
-  try{const p=JSON.parse(localStorage.getItem(STORE+'.prefs')||'{}');if(p.snap)snap=p.snap;if(p.showBoxes)showBoxes=true;if(p.layout)layoutOpts=Object.assign({},LAYOUT_DEFAULTS,p.layout);if(p.showFree===false)showFree=false;if(p.showOrder)showOrder=true;}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem(STORE+'.prefs')||'{}');if(p.snap)snap=p.snap;if(p.showBoxes)showBoxes=true;if(p.layout){if(p.layoutV!==2)delete p.layout.lean;layoutOpts=Object.assign({},LAYOUT_DEFAULTS,p.layout);}if(p.showFree===false)showFree=false;if(p.showOrder)showOrder=true;}catch(e){}
 }
 function persist(){
   try{localStorage.setItem(STORE,JSON.stringify({levels,cur}));$('#saveNote').textContent='Changes are saved in this browser.';}
   catch(e){$('#saveNote').textContent='This browser is not saving changes. Export before you close the page.';}
 }
-function savePrefs(){try{localStorage.setItem(STORE+'.prefs',JSON.stringify({snap,showFree,showOrder,showBoxes,layout:layoutOpts}));}catch(e){}}
+function savePrefs(){try{localStorage.setItem(STORE+'.prefs',JSON.stringify({snap,showFree,showOrder,showBoxes,layout:layoutOpts,layoutV:2}));}catch(e){}}
 const origById=id=>ORIGINAL.find(o=>o.id===id);
 const isChanged=lv=>{const o=origById(lv.id);return !o||JSON.stringify(o)!==JSON.stringify(lv);};
 
@@ -157,6 +157,8 @@ function renderBoard(){
   const startG=play?game:newGame(lv),rem=remaining(startG);
   const solIdx=new Map();(lv.solution||[]).forEach((id,i)=>{if(!solIdx.has(id))solIdx.set(id,i+1);});
   const layerG=el('g',{},board),over=el('g',{},board);
+  // only the top stack of each pile shows its face; the ones under it are covered by its chips
+  const topOf=new Map();list.forEach(s=>{const c=chains.get(s.id);if(!c)return;const k=c.root.id,cur=topOf.get(k);if(!cur||c.start>cur.start)topOf.set(k,{id:s.id,start:c.start});});
   order.forEach(s=>{
     const src=lv.stacks.find(o=>o.id===s.id)||s;
     const gs=startG.stacks.find(o=>o.id===s.id);
@@ -172,6 +174,7 @@ function renderBoard(){
     const fill=hiddenNow?'fh':fcls(src.color);
     chips.forEach(c=>{const sd=chipDisc(g,c.x,c.y,ax.face,'side');el('circle',{class:'chip '+fill,r:CHIP_R},sd);el('circle',{class:'chip-edge',r:CHIP_R},sd);});
     if(!chips.length)return;
+    if(ch&&topOf.get(ch.root.id)&&topOf.get(ch.root.id).id!==s.id){if(showBoxes||(!play&&sel.has(s.id))){const h=hitBox(src);el('rect',{class:'foot'+(sel.has(s.id)?' on':''),x:h.x0,y:h.y0,width:h.x1-h.x0,height:h.y1-h.y0},over);}return;}
     const last=chips[chips.length-1],fx0=last.x+ax.step[0],fy0=last.y+ax.step[1];
     const face=chipDisc(g,fx0,fy0,ax.face,'face');
     drawChipFace(face,fill);
@@ -269,9 +272,9 @@ function renderPane(){
         <li class="${lv.stacks.some(s=>s.lock)?'ok':''}"><b>Locked Chip Stack</b>: ${lv.stacks.filter(s=>s.lock).length} <code>stacks[].lock</code></li>
       </ul>
       <h3>Chip drawing</h3>
-      <p class="hint">How the editor draws the chip piles. This only changes the picture, never the level JSON. The defaults are matched to the game build's level 8.</p>
+      <p class="hint">How the editor draws the chip piles. This only changes the picture, never the level JSON. Piles are drawn as vertical stacks. Set the lean to 35 to see them tilted like the game build's level 8.</p>
       <div class="fields">
-        ${fld('Pile lean from upright (°)','',num('lyLean',layoutOpts.lean,'min="0" max="89"'))}
+        ${fld('Pile lean from upright (°, 0 = vertical, 35 = game build)','',num('lyLean',layoutOpts.lean,'min="0" max="89"'))}
         ${fld('Camera pitch (°)','',num('lyPitch',layoutOpts.pitch,'min="10" max="90"'))}
         ${fld('Chip thickness (units)','',num('lyChipT',layoutOpts.chipT,'min="1"'))}
         ${fld('Fan: gap per chip (units)','',num('lyFanGap',layoutOpts.fanGap))}

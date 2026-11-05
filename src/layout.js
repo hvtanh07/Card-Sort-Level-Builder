@@ -7,7 +7,9 @@
      so the two read as one long pile (level 5: s4 continues s0, s9 continues s8).
    - A fan stack tilts its cards around their bottom edge, the first card tilted most. */
 export const CARD_W=150,CARD_H=206;
-export const LAYOUT_DEFAULTS={gapMode:'box',gap:22,fanGap:18,fanStart:70,fanStep:4,chainDist:40,chipT:30,lean:35,pitch:56};
+export const LAYOUT_DEFAULTS={gapMode:'box',gap:22,fanGap:18,fanStart:70,fanStep:4,chainDist:40,chipT:30,lean:0,pitch:56};
+/* the game build's level 8 leans its piles about 35° (see pileAxis); the editor draws them upright by default */
+export const GAME_LEAN=35;
 export const CHIP_R=CARD_W/2;
 
 export function spreadDir(s){
