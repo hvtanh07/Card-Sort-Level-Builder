@@ -19,7 +19,7 @@ describe('levels 1 to 10 are laid out for chips', () => {
   it('stacks that do not touch keep a clear gap', () => {
     for (const l of first10) for (const a of l.stacks) for (const b of l.stacks) {
       if (a.id >= b.id || boxesOverlap(hitBox(a), hitBox(b))) continue;
-      expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))).toBeGreaterThanOrEqual(170);
+      expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(170);
     }
   });
 });
