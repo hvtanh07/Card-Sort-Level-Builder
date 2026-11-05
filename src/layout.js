@@ -128,17 +128,17 @@ export function chipsOf(s,chain,opts,count){
 /* A stack that lies across other stacks (it overlaps them but does not carry on one pile) rests on top of them:
    its bottom chip is lifted to the height of the tallest stack under it. Returns id -> {root, start} like buildChains. */
 export function restingChains(stacks,chains,counts){
+  /* a stack rests on the tallest stack it overlaps below it, so chips never sink into another pile */
   const cnt=s=>counts&&counts.has(s.id)?counts.get(s.id):(+s.count||0);
   const order=stacks.slice().sort((a,b)=>a.layer-b.layer),top=new Map(),out=new Map(),lift=new Map();
   for(const s of order){
-    let c=chains.get(s.id)||{root:s,start:0};
-    if(c.root!==s&&lift.get(c.root.id))c={root:c.root,start:c.start+lift.get(c.root.id),total:(c.total||0)+lift.get(c.root.id)};
-    else if(c.root===s&&c.start===0){
-      const b=hitBox(s);let h=0;
-      for(const t of order){if(t.layer>=s.layer)break;if(top.has(t.id)&&boxesOverlap(b,hitBox(t)))h=Math.max(h,top.get(t.id));}
-      if(h>0){c={root:s,start:h,total:h+cnt(s)};lift.set(s.id,h);}
-    }
-    out.set(s.id,c);top.set(s.id,c.start+cnt(s));
+    const c0=chains.get(s.id)||{root:s,start:0,total:cnt(s)},rid=c0.root.id;
+    const b=hitBox(s);let h=0;
+    for(const t of order){if(t.layer>=s.layer)break;if(top.has(t.id)&&boxesOverlap(b,hitBox(t)))h=Math.max(h,top.get(t.id));}
+    const start=Math.max(c0.start+(lift.get(rid)||0),h);
+    lift.set(rid,start-c0.start);
+    const c={root:c0.root,start,total:(c0.total||c0.start+cnt(s))+(start-c0.start)};
+    out.set(s.id,c);top.set(s.id,start+cnt(s));
   }
   return out;
 }
