@@ -48,9 +48,9 @@ export function updateLocks(g,cleared){
   if(rem.length&&rem.every(s=>s.lockN>0))rem.forEach(s=>{s.lockN=0;});
 }
 export function checkEnd(g){
-  if(g.buffer.length>g.cap){g.state='lost';g.msg=`Waiting slots overflowed: ${g.buffer.length} cards for ${g.cap} spaces.`;return;}
+  if(g.buffer.length>g.cap){g.state='lost';g.msg=`Waiting slots overflowed: ${g.buffer.length} chips for ${g.cap} spaces.`;return;}
   if(!remaining(g).length&&!g.buffer.length){g.state='won';g.msg=`Cleared in ${g.moves.length} moves.`;return;}
-  if(!remaining(g).length&&g.buffer.length){g.state='lost';g.msg='The table is empty but cards are still waiting with no pole to go to.';return;}
+  if(!remaining(g).length&&g.buffer.length){g.state='lost';g.msg='The table is empty but chips are still waiting with no pole to go to.';return;}
   g.state='play';
 }
 export function canTap(g,s){const rem=remaining(g);if(s.gone)return 'gone';if(blockerOf(s,rem))return 'blocked';if(s.lockN>0)return 'locked';return '';}
@@ -146,10 +146,10 @@ export function check(lv,all){
   if(!(lv.targets||[]).length)bad('The level has no poles.');
   if(!(lv.stacks||[]).length)bad('The table has no stacks.');
   const tc=tally(lv);
-  tc.forEach(r=>{if(r.cards!==r.cap)bad(`<b>${cname(r.color)}</b>: ${r.cards} cards on the table, ${r.cap} spaces on ${r.color} poles.`);});
+  tc.forEach(r=>{if(r.cards!==r.cap)bad(`<b>${cname(r.color)}</b>: ${r.cards} chips on the table, ${r.cap} spaces on ${r.color} poles.`);});
   (lv.targets||[]).forEach((t,i)=>{if(!(t.capacity>0))bad(`Pole ${i+1} has no capacity.`);});
   (lv.stacks||[]).forEach(s=>{
-    if(!(s.count>0))bad(`Stack <b>${esc(s.id)}</b> has no cards.`);
+    if(!(s.count>0))bad(`Stack <b>${esc(s.id)}</b> has no chips.`);
     if(cidx(s.color)<0)bad(`Stack <b>${esc(s.id)}</b> has an unknown color “${esc(s.color)}”.`);
     if(s.on_stack){const p=lv.stacks.find(o=>o.id===s.on_stack);
       if(!p)warn(`Stack <b>${esc(s.id)}</b> sits on <b>${esc(s.on_stack)}</b>, which does not exist.`);

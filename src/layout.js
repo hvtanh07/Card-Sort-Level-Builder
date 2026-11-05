@@ -7,7 +7,8 @@
      so the two read as one long pile (level 5: s4 continues s0, s9 continues s8).
    - A fan stack tilts its cards around their bottom edge, the first card tilted most. */
 export const CARD_W=150,CARD_H=206;
-export const LAYOUT_DEFAULTS={gapMode:'box',gap:22,fanGap:18,fanStart:70,fanStep:4,chainDist:40};
+export const LAYOUT_DEFAULTS={gapMode:'box',gap:22,fanGap:18,fanStart:70,fanStep:4,chainDist:40,chipT:30,lean:35,pitch:56};
+export const CHIP_R=CARD_W/2;
 
 export function spreadDir(s){
   const a=(+s.spread_angle||0)*Math.PI/180,d=(+s.spread_direction)===-1?-1:1;
@@ -73,5 +74,48 @@ export function cardsOf(s,chain,opts,count){
     }else gap=o.gap;
   }else gap=2;
   for(let k=0;k<n;k++){const j=start+k;out.push({x:root.x+ux*gap*j,y:root.y+uy*gap*j,rot:0,j});}
+  return out;
+}
+
+/* ---------- chips (the game's current theme) ----------
+   Worked out from the game build's level 8:
+   - x, y is where the bottom chip of the pile stands on the table.
+   - A pile is a column of chips that leans lean° away from straight up, toward spreadDir() on the table.
+     spread_angle 0 leans right (left with spread_direction -1), 90 leans toward the player, so the column
+     is seen nearly end on, and 40 sits in between.
+   - The camera looks down at the table at pitch° from the horizon, so the lean toward the player is
+     foreshortened and height shows as "up" on screen.
+   - Chips are CHIP_R in radius and chipT thick. A stack on top of another carries on its column (buildChains). */
+function norm(v){const l=Math.hypot(...v)||1;return v.map(c=>c/l);}
+function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+export function project(o,v){const p=o.pitch*Math.PI/180;return [v[0],v[1]*Math.sin(p)-v[2]*Math.cos(p)];}
+/* the pile's axis in 3D, the screen step from one chip to the next, and the chip face as an ellipse */
+export function pileAxis(root,opts){
+  const o=Object.assign({},LAYOUT_DEFAULTS,opts);
+  let A=[0,0,1];
+  if(root.spread!==false&&!root.fan){const [hx,hy]=spreadDir(root),l=o.lean*Math.PI/180;A=[Math.sin(l)*hx,Math.sin(l)*hy,Math.cos(l)];}
+  const st=project(o,A.map(c=>c*o.chipT));
+  const u=norm(Math.abs(A[2])>0.999?[1,0,0]:cross(A,[0,0,1])),v=norm(cross(A,u));
+  return {A,step:st,face:faceEllipse(project(o,u),project(o,v),CHIP_R)};
+}
+/* the ellipse that a circle with screen basis vectors bu, bv draws: {rx, ry, rot} */
+export function faceEllipse(bu,bv,r){
+  const a=bu[0]*bu[0]+bv[0]*bv[0],b=bu[0]*bu[1]+bv[0]*bv[1],d=bu[1]*bu[1]+bv[1]*bv[1];
+  const tr=(a+d)/2,df=Math.sqrt(Math.max(0,((a-d)/2)**2+b*b));
+  const l1=tr+df,l2=Math.max(0,tr-df),rot=Math.atan2(l1-a,b||1e-9)*180/Math.PI;
+  return {rx:r*Math.sqrt(l1),ry:r*Math.sqrt(l2),rot:Math.abs(b)<1e-9?(a>=d?0:90):rot};
+}
+/* chip placements for one stack: [{x, y, j}] where (x, y) is the screen center of the chip's base and j its index in the pile */
+export function chipsOf(s,chain,opts,count){
+  const o=Object.assign({},LAYOUT_DEFAULTS,opts);
+  const root=chain?chain.root:s,start=chain?chain.start:0,n=count==null?(+s.count||0):count;
+  const out=[];
+  if(root.fan){
+    const [ux,uy]=spreadDir(root);
+    for(let k=0;k<n;k++){const j=start+k;out.push({x:root.x+ux*o.fanGap*3*j,y:root.y+uy*o.fanGap*3*j,j});}
+    return out;
+  }
+  const {step}=pileAxis(root,o);
+  for(let k=0;k<n;k++){const j=start+k;out.push({x:root.x+step[0]*j,y:root.y+step[1]*j,j});}
   return out;
 }

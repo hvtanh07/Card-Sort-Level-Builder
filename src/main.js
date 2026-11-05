@@ -1,7 +1,7 @@
 import './style.css';
 import ORIGINAL from './data/levels.json';
 import {esc,clone,COLORS,ckey,cidx,cname,fcls,bcls} from './util.js';
-import {CARD_W,CARD_H,LAYOUT_DEFAULTS,hitBox,buildChains,cardsOf} from './layout.js';
+import {CHIP_R,LAYOUT_DEFAULTS,hitBox,buildChains,chipsOf,pileAxis} from './layout.js';
 import {blockerOf,newGame,activeOf,remaining,tap,canTap,boosterShuffle,boosterMagnet,snapGame,restoreGame,verify,solve,check,tally,statusOf} from './engine.js';
 
 const $=s=>document.querySelector(s);
@@ -72,45 +72,85 @@ function selectLevel(i){
 const board=$('#board');
 const vy=y=>y;
 function setViewBox(){board.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);}
-/* axis-aligned extent of a (possibly tilted) card */
-function cardExtent(c){
-  const r=c.rot*Math.PI/180,hw=Math.abs(Math.cos(r))*CARD_W/2+Math.abs(Math.sin(r))*CARD_H/2,hh=Math.abs(Math.sin(r))*CARD_W/2+Math.abs(Math.cos(r))*CARD_H/2;
-  return [c.x-hw,c.y-hh,c.x+hw,c.y+hh];
+/* screen extent of every chip of every stack */
+function stackExtent(lv,chains){
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  const grow=(a,b,c,d)=>{x0=Math.min(x0,a);y0=Math.min(y0,b);x1=Math.max(x1,c);y1=Math.max(y1,d);};
+  lv.stacks.forEach(s=>{
+    const ch=chains.get(s.id),ax=pileAxis(ch?ch.root:s,layoutOpts),r=CHIP_R;
+    chipsOf(s,ch,layoutOpts).forEach(c=>grow(c.x-r,c.y-r+Math.min(0,ax.step[1]),c.x+r,c.y+r+Math.max(0,ax.step[1])));
+    const h=hitBox(s);grow(h.x0,h.y0,h.x1,h.y1);
+  });
+  if(!isFinite(x0)){x0=0;y0=0;x1=800;y1=600;}
+  return {x0,y0,x1,y1};
+}
+/* Where the game screen sits around the stacks, in level units. Sizes are taken from the game build's level 8
+   at its scale (about 0.3 screen px per level unit on a phone 923 px wide): poles in a grid above the table,
+   one column per queue with the first pole of each queue in the bottom row, the waiting tray under them, then the table. */
+const FRAME={poleW:560,colGap:712,rowGap:668,trayW:2950,trayH:520,trayGap:90,tableGap:110,tableW:2830,pad:320};
+function frameOf(lv,chains){
+  const e=stackExtent(lv,chains),cx=(e.x0+e.x1)/2;
+  const n=Math.max(1,lv.n_slots|0),rows=Math.max(1,Math.ceil((lv.targets||[]).length/n));
+  const tableW=Math.max(FRAME.tableW,e.x1-e.x0+FRAME.pad*2);
+  const table={x0:cx-tableW/2,x1:cx+tableW/2,y0:e.y0-FRAME.pad,y1:e.y1+FRAME.pad};
+  const trayW=Math.max(FRAME.trayW,tableW+120);
+  const tray={x0:cx-trayW/2,x1:cx+trayW/2,y1:table.y0-FRAME.tableGap};tray.y0=tray.y1-FRAME.trayH;
+  const poleH=FRAME.poleW*64/58,polesBottom=tray.y0-FRAME.trayGap;
+  const poles=[];
+  for(let i=0;i<(lv.targets||[]).length;i++){
+    const q=i%n,k=Math.floor(i/n);
+    poles.push({i,q,k,x:cx+(q-(n-1)/2)*FRAME.colGap,y:polesBottom-poleH-k*FRAME.rowGap});
+  }
+  const top=polesBottom-poleH-(rows-1)*FRAME.rowGap;
+  return {e,table,tray,poles,poleH,rows,n,box:{x0:Math.min(table.x0,tray.x0),y0:top-60,x1:Math.max(table.x1,tray.x1),y1:table.y1}};
 }
 function fit(){
-  const lv=L(),chains=buildChains(lv.stacks,layoutOpts);
-  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
-  const grow=b=>{x0=Math.min(x0,b[0]);y0=Math.min(y0,b[1]);x1=Math.max(x1,b[2]);y1=Math.max(y1,b[3]);};
-  lv.stacks.forEach(s=>{cardsOf(s,chains.get(s.id),layoutOpts).forEach(c=>grow(cardExtent(c)));const h=hitBox(s);grow([h.x0,h.y0,h.x1,h.y1]);});
-  if(!isFinite(x0)){x0=0;y0=0;x1=800;y1=600;}
+  const lv=L(),f=frameOf(lv,buildChains(lv.stacks,layoutOpts)).box;
   const pad=60,r=board.getBoundingClientRect(),ar=(r.width||800)/(r.height||600);
-  let w=x1-x0+pad*2,h=y1-y0+pad*2;
+  let w=f.x1-f.x0+pad*2,h=f.y1-f.y0+pad*2;
   if(w/h<ar)w=h*ar;else h=w/ar;
-  view.w=w;view.h=h;view.x=(x0+x1)/2-w/2;view.y=(y0+y1)/2-h/2;setViewBox();
+  view.w=w;view.h=h;view.x=(f.x0+f.x1)/2-w/2;view.y=(f.y0+f.y1)/2-h/2;setViewBox();
 }
 function zoom(f,cx,cy){
   if(cx==null){cx=view.x+view.w/2;cy=view.y+view.h/2;}
-  const nw=Math.min(20000,Math.max(150,view.w*f)),k=nw/view.w;
+  const nw=Math.min(40000,Math.max(150,view.w*f)),k=nw/view.w;
   view.x=cx-(cx-view.x)*k;view.y=cy-(cy-view.y)*k;view.w=nw;view.h*=k;setViewBox();
 }
 function toWorld(e){const pt=board.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(board.getScreenCTM().inverse());}
 
 function el(tag,attrs,parent){const n=document.createElementNS(NS,tag);for(const k in attrs)n.setAttribute(k,attrs[k]);if(parent)parent.appendChild(n);return n;}
+const fx=v=>+(+v).toFixed(2);
+/* one chip face (or side) as a circle of radius CHIP_R squashed into the pile's face ellipse */
+function chipDisc(parent,x,y,face,cls){
+  return el('g',{transform:`translate(${fx(x)} ${fx(y)}) rotate(${fx(face.rot)}) scale(1 ${fx(face.ry/face.rx)})`,class:cls},parent);
+}
+function drawChipFace(g,fill){
+  el('circle',{class:'chip-rim',r:CHIP_R},g);
+  el('circle',{class:'chip '+fill,r:CHIP_R*0.84},g);
+  for(let k=0;k<6;k++){const a=k*Math.PI/3+Math.PI/6;el('rect',{class:'notch',x:-9,y:-6,width:18,height:12,rx:2,transform:`rotate(${fx(a*180/Math.PI+90)} ${fx(Math.cos(a)*CHIP_R*0.92)} ${fx(Math.sin(a)*CHIP_R*0.92)}) translate(${fx(Math.cos(a)*CHIP_R*0.92)} ${fx(Math.sin(a)*CHIP_R*0.92)})`},g);}
+  el('circle',{class:'chip-in',r:CHIP_R*0.5},g);
+}
 function renderBoard(){
   board.innerHTML='';
   const defs=el('defs',{},board);
   const pat=el('pattern',{id:'hatch',width:18,height:18,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'},defs);
   el('rect',{width:9,height:18,fill:'rgba(255,255,255,.28)'},pat);
+  const lv=L();
+  const play=mode==='play'&&game;
+  const chains=buildChains(lv.stacks,layoutOpts);
+  const fr=frameOf(lv,chains);
+  // table
+  const t=fr.table;
+  el('rect',{class:'table-rim',x:t.x0-36,y:t.y0-36,width:t.x1-t.x0+72,height:t.y1-t.y0+72,rx:110},board);
+  el('rect',{class:'table',x:t.x0,y:t.y0,width:t.x1-t.x0,height:t.y1-t.y0,rx:80},board);
   // grid
   const g0=el('g',{},board),step=50;
   const gx0=Math.floor(view.x/step)*step-step*20,gx1=view.x+view.w+step*20,gy0=Math.floor(view.y/step)*step-step*20,gy1=view.y+view.h+step*20;
   let d='';for(let x=gx0;x<=gx1;x+=step)d+=`M${x} ${gy0}V${gy1}`;for(let y=gy0;y<=gy1;y+=step)d+=`M${gx0} ${y}H${gx1}`;
   el('path',{d,class:'grid'},g0);
   el('path',{d:`M${gx0} 0H${gx1}M0 ${gy0}V${gy1}`,class:'axis'},g0);
+  renderFrame(fr,lv,play);
   if(refImg)el('image',{href:refImg.src,x:refImg.x,y:refImg.y,width:refImg.w,height:refImg.w*refImg.ar,opacity:refImg.opacity,class:'refimg'},board);
-  const lv=L();
-  const play=mode==='play'&&game;
-  const chains=buildChains(lv.stacks,layoutOpts);
   const list=play?game.stacks.filter(s=>!s.gone):lv.stacks;
   const idx=new Map(lv.stacks.map((s,i)=>[s.id,i]));
   const order=list.slice().sort((a,b)=>(a.layer-b.layer)||(idx.get(a.id)-idx.get(b.id)));
@@ -124,32 +164,27 @@ function renderBoard(){
     const hiddenNow=src.hidden&&(play?!(gs&&gs.revealed):false);
     const lockN=play?(gs?gs.lockN:0):(+src.lock||0);
     const count=play?gs.left:(+src.count||0);
-    const cards=cardsOf(src,chains.get(src.id),layoutOpts,count);
+    const ch=chains.get(src.id),ax=pileAxis(ch?ch.root:src,layoutOpts);
+    const chips=chipsOf(src,ch,layoutOpts,count);
     const cls=['stk'];if(blocked&&(showFree||play))cls.push('blocked');if(!blocked&&showFree&&!play)cls.push('free');if(!play&&sel.has(s.id))cls.push('sel');
     const g=el('g',{class:cls.join(' '),'data-id':s.id},layerG);
-    el('title',{},g).textContent=`${s.id} · ${cname(src.color)} · ${count} cards · layer ${src.layer}${src.hidden?' · hidden':''}${lockN?' · locked '+lockN:''}${blocked?' · covered':''}`;
+    el('title',{},g).textContent=`${s.id} · ${cname(src.color)} · ${count} chips · layer ${src.layer}${src.hidden?' · hidden':''}${lockN?' · locked '+lockN:''}${blocked?' · covered':''}`;
     const fill=hiddenNow?'fh':fcls(src.color);
-    let top=null;
-    cards.forEach((c,k)=>{
-      const cg=el('g',{class:k===cards.length-1?'cardg top':'cardg',transform:`translate(${+c.x.toFixed(2)} ${+c.y.toFixed(2)})${c.rot?` rotate(${c.rot})`:''}`},g);
-      el('rect',{class:'card '+fill,x:-CARD_W/2,y:-CARD_H/2,width:CARD_W,height:CARD_H,rx:20},cg);
-      el('rect',{class:'rim',x:-CARD_W/2+11,y:-CARD_H/2+11,width:CARD_W-22,height:CARD_H-22,rx:13},cg);
-      top=cg;
-    });
-    if(top){
-      if(src.hidden&&!hiddenNow)el('rect',{x:-CARD_W/2,y:-CARD_H/2,width:CARD_W,height:CARD_H,rx:20,fill:'url(#hatch)','pointer-events':'none'},top);
-      if(hiddenNow)el('text',{class:'q',x:0,y:0},top).textContent='?';
-      else{el('circle',{class:'hole',cx:0,cy:0,r:30},top);el('text',{class:'cnt',x:0,y:0},top).textContent=count;}
-      el('text',{class:'meta',x:-CARD_W/2+14,y:-CARD_H/2+30},top).textContent=s.id;
-      if(lockN>0){
-        el('rect',{class:'ice',x:-CARD_W/2+6,y:-CARD_H/2+6,width:CARD_W-12,height:CARD_H-12,rx:16},top);
-        const b=el('g',{class:'lockb',transform:`translate(${CARD_W/2-26} ${CARD_H/2-26})`},top);
-        el('circle',{r:24},b);el('text',{x:0,y:1},b).textContent=lockN;
-      }
-      if(showOrder&&!play&&solIdx.has(s.id)){
-        const b=el('g',{transform:`translate(${-CARD_W/2+24} ${CARD_H/2-24})`},top);
-        el('circle',{class:'ordc',r:19},b);el('text',{class:'ord',x:0,y:1},b).textContent=solIdx.get(s.id);
-      }
+    chips.forEach(c=>{const sd=chipDisc(g,c.x,c.y,ax.face,'side');el('circle',{class:'chip '+fill,r:CHIP_R},sd);el('circle',{class:'chip-edge',r:CHIP_R},sd);});
+    if(!chips.length)return;
+    const last=chips[chips.length-1],fx0=last.x+ax.step[0],fy0=last.y+ax.step[1];
+    const face=chipDisc(g,fx0,fy0,ax.face,'face');
+    drawChipFace(face,fill);
+    if(src.hidden&&!hiddenNow)el('circle',{r:CHIP_R,fill:'url(#hatch)','pointer-events':'none'},face);
+    if(lockN>0)el('circle',{class:'ice',r:CHIP_R*0.98},face);
+    const lab=el('g',{class:'lab',transform:`translate(${fx(fx0)} ${fx(fy0)})`},g);
+    if(hiddenNow)el('text',{class:'q',x:0,y:0},lab).textContent='?';
+    else el('text',{class:'cnt',x:0,y:0},lab).textContent=count;
+    el('text',{class:'meta',x:0,y:-CHIP_R-14},lab).textContent=s.id;
+    if(lockN>0){const b=el('g',{class:'lockb',transform:`translate(${CHIP_R*0.75} ${CHIP_R*0.55})`},lab);el('circle',{r:26},b);el('text',{x:0,y:1},b).textContent=lockN;}
+    if(showOrder&&!play&&solIdx.has(s.id)){
+      const b=el('g',{transform:`translate(${-CHIP_R*0.8} ${CHIP_R*0.6})`},lab);
+      el('circle',{class:'ordc',r:21},b);el('text',{class:'ord',x:0,y:1},b).textContent=solIdx.get(s.id);
     }
     if(showBoxes||(!play&&sel.has(s.id))){const h=hitBox(src);el('rect',{class:'foot'+(sel.has(s.id)?' on':''),x:h.x0,y:h.y0,width:h.x1-h.x0,height:h.y1-h.y0},over);}
   });
@@ -157,43 +192,49 @@ function renderBoard(){
   if(!play)lv.stacks.forEach(s=>{if(s.on_stack&&sel.has(s.id)){const p=lv.stacks.find(o=>o.id===s.on_stack);if(p)el('line',{class:'link',x1:s.x,y1:s.y,x2:p.x,y2:p.y},over);}});
 }
 
-/* ---------- queues + waiting slots ---------- */
-/* a pole as the game draws it: a peg standing in a colored ring; in Play test the cards on it stack up the peg */
-function poleSVG(p,shut,play){
+/* ---------- poles + waiting tray, drawn above the table like the game screen ---------- */
+/* a pole as the game draws it: a peg standing in a colored ring; in Play test the chips on it stack up the peg */
+function poleInner(p,shut,play){
   const ring=shut?'ring-hid':fcls(p.color);
   let discs='';
   if(play&&p.fill>0){const n=Math.max(1,Math.round(p.fill/p.cap*12));for(let k=0;k<n;k++)discs+=`<rect class="disc ${fcls(p.color)}" x="17" y="${(43-k*3.2).toFixed(1)}" width="24" height="3" rx="1.2"/>`;}
-  return `<svg viewBox="0 0 58 64" aria-hidden="true">
-    <ellipse class="${ring}" cx="29" cy="51" rx="27" ry="12.5"/><ellipse class="under" cx="29" cy="51" rx="27" ry="12.5"/>
+  return `<ellipse class="${ring}" cx="29" cy="51" rx="27" ry="12.5"/><ellipse class="under" cx="29" cy="51" rx="27" ry="12.5"/>
     <ellipse class="${ring}" cx="29" cy="46" rx="27" ry="12.5"/>
     <ellipse class="hole" cx="29" cy="46" rx="10" ry="4.6"/>
     <rect class="rod" x="23" y="2" width="12" height="45" rx="6"/><rect class="rodhi" x="25.5" y="5" width="3" height="38" rx="1.5"/>
-    ${discs}${shut?'<text class="qm" x="29" y="49">?</text>':''}
-  </svg>`;
+    ${discs}${shut?'<text class="qm" x="29" y="49">?</text>':''}`;
 }
-function renderTop(){
-  const lv=L(),play=mode==='play'&&game;
-  const n=Math.max(1,lv.n_slots|0);
-  let html='';
-  for(let q=0;q<n;q++){
-    let items=[];
-    if(play){
+function renderFrame(fr,lv,play){
+  const g=el('g',{class:'frame'},board);
+  // poles: in Play test each queue drops the cleared poles, so the next one moves down to the bottom row
+  const items=[];
+  if(play){
+    for(let q=0;q<fr.n;q++){
       const act=activeOf(game,q);
-      items=game.queues[q].filter(i=>!game.poles[i].done).map(i=>{const p=game.poles[i];return {i,color:p.color,cap:p.cap,hidden:p.hidden,fill:p.fill,bottom:p===act};});
-    }else{
-      lv.targets.forEach((t,i)=>{if(i%n===q)items.push({i,color:t.color,cap:t.capacity,hidden:!!t.hidden,fill:0,bottom:items.length===0});});
+      game.queues[q].filter(i=>!game.poles[i].done).forEach((i,k)=>{const p=game.poles[i];items.push({i,q,k,color:p.color,cap:p.cap,hidden:p.hidden,fill:p.fill,bottom:p===act});});
     }
-    html+=`<div class="queue"><span class="qn">Queue ${q+1}</span>${items.map(p=>{
-      const shut=p.hidden&&!p.bottom;
-      return `<button type="button" class="pole${!play&&selPole===p.i?' on':''}" data-pole="${p.i}" title="Pole ${p.i+1}: ${cname(p.color)}, ${p.cap} cards${p.hidden?', hidden until it reaches the bottom':''}${p.bottom?' · at the bottom, taking cards':''}">${poleSVG(p,shut&&play,play)}<span>${shut&&play?'?':(play?p.fill+'/'+p.cap:p.cap)}${p.hidden&&!(shut&&play)?' ?':''}</span></button>`;
-    }).join('')||'<span class="hint">empty</span>'}</div>`;
+  }else lv.targets.forEach((tg,i)=>{const q=i%fr.n,k=Math.floor(i/fr.n);items.push({i,q,k,color:tg.color,cap:tg.capacity,hidden:!!tg.hidden,fill:0,bottom:k===0});});
+  const cx=(fr.table.x0+fr.table.x1)/2,polesBottom=fr.tray.y0-FRAME.trayGap,W=FRAME.poleW,H=fr.poleH;
+  items.sort((a,b)=>b.k-a.k).forEach(p=>{
+    const x=cx+(p.q-(fr.n-1)/2)*FRAME.colGap-W/2,y=polesBottom-H-p.k*FRAME.rowGap,shut=p.hidden&&!p.bottom;
+    const pg=el('g',{class:'pole'+(!play&&selPole===p.i?' on':''),'data-pole':p.i},g);
+    el('title',{},pg).textContent=`Pole ${p.i+1}: ${cname(p.color)}, ${p.cap} chips${p.hidden?', hidden until it reaches the bottom':''}${p.bottom?' · at the bottom, taking chips':''}`;
+    if(!play&&selPole===p.i)el('rect',{class:'pole-sel',x:x-20,y:y-20,width:W+40,height:H+40,rx:60},pg);
+    const sv=el('svg',{x,y,width:W,height:H,viewBox:'0 0 58 64',overflow:'visible'},pg);
+    sv.innerHTML=poleInner(p,shut&&play,play);
+    el('text',{class:'pole-n',x:x+W/2,y:y+H+70},pg).textContent=(shut&&play?'?':(play?p.fill+'/'+p.cap:p.cap))+(p.hidden&&!(shut&&play)?' ?':'');
+  });
+  for(let q=0;q<fr.n;q++)el('text',{class:'queue-n',x:cx+(q-(fr.n-1)/2)*FRAME.colGap,y:polesBottom-H-(fr.rows-1)*FRAME.rowGap-40},g).textContent=`Queue ${q+1}`;
+  // waiting tray: one slot per waiting chip
+  const tr=fr.tray,cap=lv.buffer_capacity|0,buf=play?game.buffer:[];
+  el('rect',{class:'tray-rim',x:tr.x0,y:tr.y0,width:tr.x1-tr.x0,height:tr.y1-tr.y0,rx:70},g);
+  el('rect',{class:'tray',x:tr.x0+40,y:tr.y0+40,width:tr.x1-tr.x0-80,height:tr.y1-tr.y0-80,rx:40},g);
+  const tot=Math.max(cap,buf.length,1),inner=tr.x1-tr.x0-140,sw=inner/tot;
+  for(let i=0;i<tot;i++){
+    const c=buf[i],x=tr.x0+70+i*sw;
+    el('rect',{class:'slot'+(c?' '+fcls(c)+' full':'')+(i>=cap?' over':''),x:x+sw*0.12,y:tr.y0+75,width:sw*0.76,height:tr.y1-tr.y0-150,rx:Math.min(30,sw*0.35)},g);
   }
-  $('#queues').innerHTML=html;
-  const cap=lv.buffer_capacity|0,buf=play?game.buffer:[];
-  let cells='';const tot=Math.max(cap,buf.length);
-  for(let i=0;i<tot;i++){const c=buf[i];cells+=`<span class="cell${c?' '+bcls(c):''}${i>=cap?' over':''}"></span>`;}
-  $('#cells').innerHTML=cells;
-  $('#bufLab').textContent=play?`Waiting slots · ${buf.length} of ${cap} cards`:`Waiting slots · ${cap} cards`;
+  el('text',{class:'tray-n',x:tr.x1,y:tr.y0-40},g).textContent=play?`Waiting ${buf.length} / ${cap}`:`Waiting slots: ${cap}`;
 }
 
 /* ---------- inspector ---------- */
@@ -209,32 +250,31 @@ function renderPane(){
       <div class="fields">
         ${fld('Level id','id',`<input id="fId" value="${esc(lv.id)}">`,'full')}
         ${fld('Pole queues','n_slots',num('fSlots',lv.n_slots,'min="1" max="8"'))}
-        ${fld('Waiting slots (cards)','buffer_capacity',num('fBuf',lv.buffer_capacity,'min="1"'))}
+        ${fld('Waiting slots (chips)','buffer_capacity',num('fBuf',lv.buffer_capacity,'min="1"'))}
         ${fld('Revision','revision',num('fRev',lv.revision))}
         ${fld('Seed','seed',num('fSeed',lv.seed))}
         ${fld('FTUE key (blank for none)','ftue',`<input id="fFtue" value="${esc(lv.ftue||'')}" placeholder="ftue.l1">`,'full')}
       </div>
-      <h3>Cards and poles by color</h3>
-      <table class="tally"><thead><tr><th>Color</th><th>Stacks</th><th>Cards</th><th>Poles</th><th>Spaces</th></tr></thead><tbody>
+      <h3>Chips and poles by color</h3>
+      <table class="tally"><thead><tr><th>Color</th><th>Stacks</th><th>Chips</th><th>Poles</th><th>Spaces</th></tr></thead><tbody>
       ${tc.map(r=>`<tr><td><span class="sw ${bcls(r.color)}" style="width:12px;height:12px;display:inline-block;vertical-align:-1px;border-radius:3px"></span> ${cname(r.color)}</td><td>${r.stacks}</td><td${r.cards!==r.cap?' class="x"':''}>${r.cards}</td><td>${r.poles}</td><td${r.cards!==r.cap?' class="x"':''}>${r.cap}</td></tr>`).join('')}
       <tr><th>Total</th><th>${lv.stacks.length}</th><th>${cards}</th><th>${lv.targets.length}</th><th>${lv.targets.reduce((a,t)=>a+(+t.capacity||0),0)}</th></tr></tbody></table>
-      <p class="hint">${layers} layer${layers===1?'':'s'}. Cards of each color must exactly fill the poles of that color.</p>
-      <div class="btns"><button class="btn" id="autoPoles" type="button">Rebuild poles from cards</button></div>
-      <p class="hint">Makes one pole of 18 for every 18 cards of a color and deals them across the queues. Undo brings the old poles back.</p>
+      <p class="hint">${layers} layer${layers===1?'':'s'}. Chips of each color must exactly fill the poles of that color.</p>
+      <div class="btns"><button class="btn" id="autoPoles" type="button">Rebuild poles from chips</button></div>
+      <p class="hint">Makes one pole of 18 for every 18 chips of a color and deals them across the queues. Undo brings the old poles back.</p>
       <h3>Elements in this level</h3>
       <ul class="issues">
-        <li class="${lv.stacks.some(s=>s.hidden)?'ok':''}"><b>Hidden Card Stack</b>: ${lv.stacks.filter(s=>s.hidden).length} <code>stacks[].hidden</code></li>
+        <li class="${lv.stacks.some(s=>s.hidden)?'ok':''}"><b>Hidden Chip Stack</b>: ${lv.stacks.filter(s=>s.hidden).length} <code>stacks[].hidden</code></li>
         <li class="${lv.targets.some(t=>t.hidden)?'ok':''}"><b>Hidden Color Pole</b>: ${lv.targets.filter(t=>t.hidden).length} <code>targets[].hidden</code></li>
-        <li class="${lv.stacks.some(s=>s.lock)?'ok':''}"><b>Locked Card Stack</b>: ${lv.stacks.filter(s=>s.lock).length} <code>stacks[].lock</code></li>
+        <li class="${lv.stacks.some(s=>s.lock)?'ok':''}"><b>Locked Chip Stack</b>: ${lv.stacks.filter(s=>s.lock).length} <code>stacks[].lock</code></li>
       </ul>
-      <h3>Card drawing</h3>
-      <p class="hint">How the editor lays out the cards of a stack. This only changes the picture, never the level JSON. The defaults are matched to the game build's level 5.</p>
+      <h3>Chip drawing</h3>
+      <p class="hint">How the editor draws the chip piles. This only changes the picture, never the level JSON. The defaults are matched to the game build's level 8.</p>
       <div class="fields">
-        ${fld('Card gap in a spread','',`<select id="lyGapMode"><option value="box"${layoutOpts.gapMode==='box'?' selected':''}>Fill the w × h box</option><option value="fixed"${layoutOpts.gapMode==='fixed'?' selected':''}>Fixed gap</option></select>`)}
-        ${fld('Fixed gap (units)','',num('lyGap',layoutOpts.gap,'min="0"'+(layoutOpts.gapMode==='fixed'?'':' disabled')))}
-        ${fld('Fan: first card tilt (°)','',num('lyFanStart',layoutOpts.fanStart))}
-        ${fld('Fan: tilt per card (°)','',num('lyFanStep',layoutOpts.fanStep,'step="0.5"'))}
-        ${fld('Fan: gap per card (units)','',num('lyFanGap',layoutOpts.fanGap))}
+        ${fld('Pile lean from upright (°)','',num('lyLean',layoutOpts.lean,'min="0" max="89"'))}
+        ${fld('Camera pitch (°)','',num('lyPitch',layoutOpts.pitch,'min="10" max="90"'))}
+        ${fld('Chip thickness (units)','',num('lyChipT',layoutOpts.chipT,'min="1"'))}
+        ${fld('Fan: gap per chip (units)','',num('lyFanGap',layoutOpts.fanGap))}
         ${fld('Pile join distance (units)','',num('lyChain',layoutOpts.chainDist,'min="0"'))}
       </div>
       <div class="btns"><button class="btn" type="button" id="lyReset">Reset drawing</button></div>
@@ -259,7 +299,7 @@ function renderPane(){
         <h3>Layer</h3><div class="btns"><button class="btn" type="button" data-act="laydown">Layer −1</button><button class="btn" type="button" data-act="layup">Layer +1</button></div>
         <h3>Elements</h3>
         <div class="btns"><button class="btn" type="button" id="mHidOn">Make hidden</button><button class="btn" type="button" id="mHidOff">Not hidden</button></div>
-        <div class="fields" style="margin-top:8px">${fld('Lock countdown (0 = not locked)','lock',num('mLock','', 'min="0" placeholder="mixed"'))}${fld('Cards in each','count',num('mCount','', 'min="1" placeholder="mixed"'))}</div>
+        <div class="fields" style="margin-top:8px">${fld('Lock countdown (0 = not locked)','lock',num('mLock','', 'min="0" placeholder="mixed"'))}${fld('Chips in each','count',num('mCount','', 'min="1" placeholder="mixed"'))}</div>
         <div class="btns"><button class="btn" type="button" data-act="dup">Duplicate</button><button class="btn" type="button" data-act="del">Delete</button></div>`;
       return;
     }
@@ -267,16 +307,16 @@ function renderPane(){
     p.innerHTML=`<h2>Stack ${esc(s.id)}</h2>
       <div class="fields">
         ${fld('Id','id',`<input id="sId" value="${esc(s.id)}">`)}
-        ${fld('Cards','count',num('sCount',s.count,'min="1"'))}
-        ${fld('X (first card)','x',num('sX',s.x))}
-        ${fld('Y (first card)','y',num('sY',s.y))}
+        ${fld('Chips','count',num('sCount',s.count,'min="1"'))}
+        ${fld('X (bottom chip)','x',num('sX',s.x))}
+        ${fld('Y (bottom chip)','y',num('sY',s.y))}
         ${fld('Width','w',num('sW',s.w,'min="10"'))}
         ${fld('Height','h',num('sH',s.h,'min="10"'))}
         ${fld('Layer','layer',num('sLayer',s.layer,'min="0"'))}
         ${fld('Sits on','on_stack',`<select id="sOn"><option value="">nothing</option>${others.map(o=>`<option value="${esc(o.id)}"${s.on_stack===o.id?' selected':''}>${esc(o.id)} (layer ${o.layer})</option>`).join('')}</select>`)}
       </div>
       <h3>Color <code style="font:11px var(--mono)">color</code></h3>${swatches('sColor',s.color)}
-      <h3>Card layout</h3>
+      <h3>Pile</h3>
       <div class="fields">
         <label class="chk"><input type="checkbox" id="sSpread"${s.spread?' checked':''}> Spread <code style="font:11px var(--mono);color:var(--muted)">spread</code></label>
         <label class="chk"><input type="checkbox" id="sFan"${s.fan?' checked':''}> Fan <code style="font:11px var(--mono);color:var(--muted)">fan</code></label>
@@ -284,8 +324,8 @@ function renderPane(){
         ${fld('Angle (degrees)','spread_angle',num('sAng',s.spread_angle,'step="1"'))}
       </div>
       <h3>Elements</h3>
-      <div class="elem"><label class="chk"><input type="checkbox" id="sHidden"${s.hidden?' checked':''}> <b>Hidden Card Stack</b></label><p class="hint">Shows grey with a “?” until nothing covers it. Unlocks at level 7. Saved as <code>"hidden": true</code>.</p></div>
-      <div class="elem"><label class="chk"><input type="checkbox" id="sLocked"${s.lock?' checked':''}> <b>Locked Card Stack</b></label>
+      <div class="elem"><label class="chk"><input type="checkbox" id="sHidden"${s.hidden?' checked':''}> <b>Hidden Chip Stack</b></label><p class="hint">Shows grey with a “?” until nothing covers it. Unlocks at level 7. Saved as <code>"hidden": true</code>.</p></div>
+      <div class="elem"><label class="chk"><input type="checkbox" id="sLocked"${s.lock?' checked':''}> <b>Locked Chip Stack</b></label>
         <div class="fields">${fld('Poles to clear','lock',num('sLock',s.lock||'', 'min="1" max="20"'+(s.lock?'':' disabled')))}</div>
         <p class="hint">Counts down once nothing covers it, one per cleared pole. Unlocks at level 17. Saved as <code>"lock": n</code>.</p></div>
       <div class="btns"><button class="btn" type="button" data-act="ontop">Add a stack on top</button><button class="btn" type="button" data-act="dup">Duplicate</button><button class="btn" type="button" data-act="del">Delete</button></div>`;
@@ -301,7 +341,7 @@ function renderPane(){
         <label class="chk" title="Hidden Color Pole: grey until it reaches the bottom. Unlocks at level 12."><input type="checkbox" data-pf="hidden"${t.hidden?' checked':''}> ?</label>
         <span class="ops"><span class="qtag">Q${i%n+1}·${Math.floor(i/n)+1}</span><button class="ib" type="button" data-pop="up" aria-label="Move pole ${i+1} up">↑</button><button class="ib" type="button" data-pop="down" aria-label="Move pole ${i+1} down">↓</button><button class="ib" type="button" data-pop="del" aria-label="Delete pole ${i+1}">✕</button></span>
       </div>`).join('')}</div>
-      <div class="btns"><button class="btn primary" type="button" id="pAdd">Add pole</button><button class="btn" type="button" id="autoPoles">Rebuild from cards</button><button class="btn" type="button" id="pShuffle">Shuffle order</button></div>
+      <div class="btns"><button class="btn primary" type="button" id="pAdd">Add pole</button><button class="btn" type="button" id="autoPoles">Rebuild from chips</button><button class="btn" type="button" id="pShuffle">Shuffle order</button></div>
       <p class="hint">“?” marks a <b>Hidden Color Pole</b>, saved as <code>"hidden": true</code> on the pole. Q2·1 means queue 2, first in line.</p>`;
   }else if(tab==='check'){
     const iss=issuesCache,sol=lv.solution||[],v=sol.length?verify(lv):null;
@@ -312,7 +352,7 @@ function renderPane(){
       <div class="btns"><button class="btn" type="button" id="cPlay">Step through in Play test</button><button class="btn" type="button" id="cSolve">Find a solution</button><button class="btn" type="button" id="cClear">Clear solution</button></div>
       <div class="msg" id="solveMsg"></div>
       <h3>How the check plays the level</h3>
-      <p class="hint">Pole <i>i</i> goes to queue <i>i</i> mod <code>n_slots</code>. A stack is covered by any stack on a higher layer, of another color, whose footprint overlaps it. The footprint is the <code>w</code> × <code>h</code> box that starts at the first card (<code>x</code>, <code>y</code>) and runs in the spread direction. Turn on Footprints to see them. Cards with no pole wait in the slots, and the level is lost when more than <code>buffer_capacity</code> cards wait. These rules replay all 40 saved solutions from the sheet without a failure.</p>`;
+      <p class="hint">Pole <i>i</i> goes to queue <i>i</i> mod <code>n_slots</code>. A stack is covered by any stack on a higher layer, of another color, whose footprint overlaps it. The footprint is the <code>w</code> × <code>h</code> box that starts at the bottom chip (<code>x</code>, <code>y</code>) and runs in the spread direction. Turn on Footprints to see them. Chips with no pole wait in the slots, and the level is lost when more than <code>buffer_capacity</code> chips wait. These rules replay all 40 saved solutions from the sheet without a failure.</p>`;
   }else if(tab==='json'){
     p.innerHTML=`<h2>Level JSON</h2>
       <p class="hint">Edit and press Apply, or paste a whole level here. Same format as the Level column of the sheet.</p>
@@ -387,10 +427,9 @@ pane.addEventListener('change',e=>{
   const t=e.target,lv=L(),id=t.id;
   if(tab==='level'&&/^ly/.test(id)){
     const v=t.value;
-    if(id==='lyGapMode')layoutOpts.gapMode=v;
-    if(id==='lyGap')layoutOpts.gap=Math.max(0,+v||0);
-    if(id==='lyFanStart')layoutOpts.fanStart=+v||0;
-    if(id==='lyFanStep')layoutOpts.fanStep=+v||0;
+    if(id==='lyLean')layoutOpts.lean=Math.min(89,Math.max(0,+v||0));
+    if(id==='lyPitch')layoutOpts.pitch=Math.min(90,Math.max(10,+v||0));
+    if(id==='lyChipT')layoutOpts.chipT=Math.max(1,+v||0);
     if(id==='lyFanGap')layoutOpts.fanGap=+v||0;
     if(id==='lyChain')layoutOpts.chainDist=Math.max(0,+v||0);
     savePrefs();renderBoard();renderPane();return;
@@ -468,7 +507,7 @@ pane.addEventListener('click',e=>{
     if(op==='down'&&i<a.length-1){[a[i+1],a[i]]=[a[i],a[i+1]];selPole=i+1;}
     if(op==='del'){a.splice(i,1);selPole=-1;}
     commit();renderAll();return;}
-  const row=t.closest('[data-row]');if(row&&!t.closest('select,input,label')){selPole=+row.dataset.row;renderTop();renderPane();return;}
+  const row=t.closest('[data-row]');if(row&&!t.closest('select,input,label')){selPole=+row.dataset.row;renderBoard();renderPane();return;}
   if(t.id==='cPlay'){setMode('play');replayIdx=0;toast('Press “Step solution” to play the saved moves one at a time.');return;}
   if(t.id==='cClear'){delete lv.solution;lv.solution=[];commit();renderAll();return;}
   if(t.id==='cSolve'){
@@ -506,7 +545,8 @@ pane.addEventListener('input',e=>{
 let drag=null,drawQueued=false;
 board.addEventListener('pointerdown',e=>{
   if(e.button!==0&&e.button!==1)return;
-  const w=toWorld(e),stk=e.target.closest('.stk');
+  const w=toWorld(e),stk=e.target.closest('.stk'),pole=e.target.closest('[data-pole]');
+  if(pole&&e.button===0){poleTap(+pole.dataset.pole);return;}
   board.setPointerCapture(e.pointerId);
   if(mode==='play'){
     if(stk)playTap(stk.dataset.id,stk);
@@ -590,7 +630,7 @@ function playTap(id,node){
   if(r){gameHist.pop();if(node){node.classList.remove('shake');void node.getBBox();node.classList.add('shake');}
     banner(r==='blocked'?`${id} is covered by another stack.`:r==='locked'?`${id} is locked. Clear more poles first.`:'',r?'info':'');setTimeout(()=>banner(),1400);}
   else banner();
-  syncBoost();renderBoard();renderTop();
+  syncBoost();renderBoard();
 }
 function syncBoost(){
   $('#bHand').setAttribute('aria-pressed',String(booster==='hand'));$('#bMagnet').setAttribute('aria-pressed',String(booster==='magnet'));
@@ -599,18 +639,17 @@ function syncBoost(){
   $('#pSave').disabled=!game||!game.moves.length;
 }
 $('#bHand').addEventListener('click',()=>{if(!game||game.state!=='play')return;booster=booster==='hand'?null:'hand';syncBoost();banner(booster?'Hand: tap any stack.':'');});
-$('#bMagnet').addEventListener('click',()=>{if(!game||game.state!=='play')return;booster=booster==='magnet'?null:'magnet';syncBoost();banner(booster?'Magnet: tap any pole in the queues.':'');});
-$('#bShuffle').addEventListener('click',()=>{if(!game||game.state!=='play')return;pushHist();boosterShuffle(game);boostUse.shuffle++;booster=null;syncBoost();banner();renderBoard();renderTop();});
-$('#queues').addEventListener('click',e=>{
-  const b=e.target.closest('[data-pole]');if(!b)return;const i=+b.dataset.pole;
+$('#bMagnet').addEventListener('click',()=>{if(!game||game.state!=='play')return;booster=booster==='magnet'?null:'magnet';syncBoost();banner(booster?'Magnet: tap any pole.':'');});
+$('#bShuffle').addEventListener('click',()=>{if(!game||game.state!=='play')return;pushHist();boosterShuffle(game);boostUse.shuffle++;booster=null;syncBoost();banner();renderBoard();});
+function poleTap(i){
   if(mode==='play'){
-    if(booster==='magnet'&&game.state==='play'){pushHist();boosterMagnet(game,i);boostUse.magnet++;booster=null;syncBoost();banner();renderBoard();renderTop();}
+    if(booster==='magnet'&&game.state==='play'){pushHist();boosterMagnet(game,i);boostUse.magnet++;booster=null;syncBoost();banner();renderBoard();}
     return;
   }
-  selPole=i;tab='poles';renderTop();renderPane();
-});
-$('#pUndo').addEventListener('click',()=>{const h=gameHist.pop();if(!h)return;restoreGame(game,h.g);boostUse=h.b;booster=null;syncBoost();banner();renderBoard();renderTop();});
-$('#pRestart').addEventListener('click',()=>{startGame();renderBoard();renderTop();});
+  selPole=i;tab='poles';renderBoard();renderPane();
+}
+$('#pUndo').addEventListener('click',()=>{const h=gameHist.pop();if(!h)return;restoreGame(game,h.g);boostUse=h.b;booster=null;syncBoost();banner();renderBoard();});
+$('#pRestart').addEventListener('click',()=>{startGame();renderBoard();});
 $('#pReplay').addEventListener('click',()=>{
   const sol=L().solution||[];
   if(!sol.length){banner('This level has no saved solution yet.');return;}
@@ -619,7 +658,7 @@ $('#pReplay').addEventListener('click',()=>{
   const id=sol[replayIdx];pushHist();const r=tap(game,id,false);
   if(r){gameHist.pop();banner(`Move ${replayIdx+1} (${id}) can't be played: ${r}.`,'lost');}
   else{replayIdx++;if(game.state==='play')banner(`Move ${replayIdx} of ${sol.length}: ${id}`);else banner();}
-  syncBoost();renderBoard();renderTop();
+  syncBoost();renderBoard();
 });
 $('#pSave').addEventListener('click',()=>{
   if(!game||!game.moves.length)return;
@@ -794,7 +833,7 @@ document.addEventListener('paste',e=>{
 /* ---------- render ---------- */
 function renderAll(){
   $('#lvTitle').textContent=L().id;
-  refreshChecks();renderTop();renderBoard();renderPane();refreshList();syncUndo();
+  refreshChecks();renderBoard();renderPane();refreshList();syncUndo();
   if(mode==='play')syncBoost();
 }
 window.addEventListener('resize',()=>{const r=board.getBoundingClientRect();if(r.width&&r.height){view.h=view.w*r.height/r.width;setViewBox();renderBoard();}});

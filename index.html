@@ -13,7 +13,7 @@
 <div class="app">
   <aside class="rail" aria-label="Levels">
     <div class="brand">
-      <svg viewBox="0 0 30 30" aria-hidden="true"><rect x="3" y="7" width="15" height="20" rx="3" fill="#D9363E"/><rect x="8" y="5" width="15" height="20" rx="3" fill="#2563EB"/><rect x="13" y="3" width="15" height="20" rx="3" fill="#F4BE0B"/></svg>
+      <svg viewBox="0 0 30 30" aria-hidden="true"><ellipse cx="15" cy="23" rx="12" ry="5" fill="#E3263F"/><ellipse cx="15" cy="18" rx="12" ry="5" fill="#2F4FE8"/><ellipse cx="15" cy="12.5" rx="12" ry="5" fill="#F5C21A"/><ellipse cx="15" cy="12.5" rx="7" ry="2.8" fill="none" stroke="#fff" stroke-width="1.4" stroke-dasharray="2 2.4"/></svg>
       <div><h1>Card Slots</h1><p>Level editor</p></div>
     </div>
     <div class="rail-tools">
@@ -47,8 +47,8 @@
         <button class="tb" id="tRedo" type="button" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg><span class="lbl">Redo</span></button>
       </div>
       <div class="grp" data-edit>
-        <button class="tb" id="tAdd" type="button" title="Add a stack (A)"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="M12 9v7M8.5 12.5h7"/></svg><span class="lbl">Stack</span></button>
-        <button class="tb" id="tOnTop" type="button" title="Add a stack on top of the selected one (T)"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="12" height="14" rx="2.5"/><rect x="9" y="2" width="12" height="14" rx="2.5"/></svg><span class="lbl">On top</span></button>
+        <button class="tb" id="tAdd" type="button" title="Add a stack (A)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12.5" rx="8" ry="8"/><path d="M12 9v7M8.5 12.5h7"/></svg><span class="lbl">Stack</span></button>
+        <button class="tb" id="tOnTop" type="button" title="Add a stack on top of the selected one (T)"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="17" rx="9" ry="4"/><ellipse cx="12" cy="11" rx="9" ry="4"/><ellipse cx="12" cy="6" rx="9" ry="4"/></svg><span class="lbl">On top</span></button>
         <button class="tb" id="tDup" type="button" title="Duplicate (Ctrl+D)"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2.5"/><path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-7A2.5 2.5 0 0 0 4 5.5v8A2.5 2.5 0 0 0 6.5 16H8"/></svg><span class="lbl">Duplicate</span></button>
         <button class="tb" id="tDel" type="button" title="Delete (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/></svg><span class="lbl">Delete</span></button>
         <button class="tb" id="tLayDown" type="button" title="Layer down ([)"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
@@ -71,16 +71,11 @@
       <button class="tb" id="tCopy" type="button" title="Copy this level's JSON"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2.5"/><path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-7A2.5 2.5 0 0 0 4 5.5v8A2.5 2.5 0 0 0 6.5 16H8"/></svg><span class="lbl">Copy JSON</span></button>
     </div>
     <div class="stage">
-      <div class="top">
-        <div class="queues" id="queues" aria-label="Pole queues"></div>
-        <div class="buffer">
-          <span class="lab" id="bufLab">Waiting slots</span>
-          <div class="cells" id="cells"></div>
-        </div>
-        <div class="boosters" data-play hidden>
+      <div class="top" data-play hidden>
+        <div class="boosters">
           <button class="bst" type="button" id="bHand" aria-pressed="false" title="Pick any stack, even a blocked or locked one">Hand <small id="bHandN">0 used</small></button>
-          <button class="bst" type="button" id="bShuffle" title="Bring poles that match the waiting cards to the bottom, shuffle the rest">Shuffle <small id="bShuffleN">0 used</small></button>
-          <button class="bst" type="button" id="bMagnet" aria-pressed="false" title="Pick any pole: it pulls its cards and clears">Magnet <small id="bMagnetN">0 used</small></button>
+          <button class="bst" type="button" id="bShuffle" title="Bring poles that match the waiting chips to the bottom, shuffle the rest">Shuffle <small id="bShuffleN">0 used</small></button>
+          <button class="bst" type="button" id="bMagnet" aria-pressed="false" title="Pick any pole: it pulls its chips and clears">Magnet <small id="bMagnetN">0 used</small></button>
         </div>
       </div>
       <div class="board-wrap">
