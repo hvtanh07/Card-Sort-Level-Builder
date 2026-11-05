@@ -1,7 +1,7 @@
 import './style.css';
 import ORIGINAL from './data/levels.json';
 import {esc,clone,COLORS,ckey,cidx,cname,fcls,bcls} from './util.js';
-import {CHIP_R,LAYOUT_DEFAULTS,hitBox,buildChains,chipsOf,pileAxis} from './layout.js';
+import {CHIP_R,LAYOUT_DEFAULTS,hitBox,boxesOverlap,buildChains,chipsOf,pileAxis} from './layout.js';
 import {blockerOf,newGame,activeOf,remaining,tap,canTap,boosterShuffle,boosterMagnet,snapGame,restoreGame,verify,solve,check,tally,statusOf} from './engine.js';
 
 const $=s=>document.querySelector(s);
@@ -20,15 +20,18 @@ let game=null,gameHist=[],booster=null,boostUse={hand:0,shuffle:0,magnet:0},repl
 let issuesCache=[];
 const L=()=>levels[cur];
 
+/* a short fingerprint of the built-in levels, so a browser with saved edits can tell when they change */
+const BASE=(()=>{const t=JSON.stringify(ORIGINAL);let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;return String(h>>>0);})();
+let savedBase=BASE;
 function load(){
   let saved=null;
   try{saved=JSON.parse(localStorage.getItem(STORE)||'null');}catch(e){}
-  if(saved&&Array.isArray(saved.levels)&&saved.levels.length){levels=saved.levels;cur=Math.min(saved.cur|0,levels.length-1);}
+  if(saved&&Array.isArray(saved.levels)&&saved.levels.length){levels=saved.levels;cur=Math.min(saved.cur|0,levels.length-1);savedBase=saved.base||'';}
   else{levels=clone(ORIGINAL);cur=0;}
   try{const p=JSON.parse(localStorage.getItem(STORE+'.prefs')||'{}');if(p.snap)snap=p.snap;if(p.showBoxes)showBoxes=true;if(p.layout){if(p.layoutV!==3)delete p.layout.lean;layoutOpts=Object.assign({},LAYOUT_DEFAULTS,p.layout);}if(p.showFree===false)showFree=false;if(p.showOrder)showOrder=true;}catch(e){}
 }
 function persist(){
-  try{localStorage.setItem(STORE,JSON.stringify({levels,cur}));$('#saveNote').textContent='Changes are saved in this browser.';}
+  try{localStorage.setItem(STORE,JSON.stringify({levels,cur,base:savedBase}));$('#saveNote').textContent=savedBase===BASE?'Changes are saved in this browser.':'The built-in levels were updated since you last saved here. Press Reset to sheet to load them. That replaces the edits saved in this browser, so export first if you want to keep them.';}
   catch(e){$('#saveNote').textContent='This browser is not saving changes. Export before you close the page.';}
 }
 function savePrefs(){try{localStorage.setItem(STORE+'.prefs',JSON.stringify({snap,showFree,showOrder,showBoxes,layout:layoutOpts,layoutV:3}));}catch(e){}}
@@ -130,6 +133,23 @@ function drawChipFace(g,fill){
   for(let k=0;k<6;k++){const a=k*Math.PI/3+Math.PI/6;el('rect',{class:'notch',x:-9,y:-6,width:18,height:12,rx:2,transform:`rotate(${fx(a*180/Math.PI+90)} ${fx(Math.cos(a)*CHIP_R*0.92)} ${fx(Math.sin(a)*CHIP_R*0.92)}) translate(${fx(Math.cos(a)*CHIP_R*0.92)} ${fx(Math.sin(a)*CHIP_R*0.92)})`},g);}
   el('circle',{class:'chip-in',r:CHIP_R*0.5},g);
 }
+/* back to front: a stack lying on another one is drawn after it, and of two stacks that do not touch,
+   the one nearer the player (larger y) is drawn after, so tall piles in front cover the ones behind */
+function drawOrder(list,lv,idx){
+  const src=id=>lv.stacks.find(o=>o.id===id)||list.find(o=>o.id===id);
+  const box=new Map(list.map(s=>[s.id,hitBox(src(s.id))]));
+  const before=(a,b)=>{const A=src(a.id),B=src(b.id);
+    if(boxesOverlap(box.get(a.id),box.get(b.id))&&A.layer!==B.layer)return A.layer<B.layer;
+    if(A.y!==B.y)return A.y<B.y;
+    return A.layer!==B.layer?A.layer<B.layer:idx.get(a.id)<idx.get(b.id);};
+  const left=list.slice(),out=[];
+  while(left.length){
+    let k=left.findIndex(a=>!left.some(b=>b!==a&&before(b,a)));
+    if(k<0)k=left.reduce((m,a,i)=>src(a.id).layer<src(left[m].id).layer?i:m,0);
+    out.push(left.splice(k,1)[0]);
+  }
+  return out;
+}
 function renderBoard(){
   board.innerHTML='';
   const defs=el('defs',{},board);
@@ -153,7 +173,7 @@ function renderBoard(){
   if(refImg)el('image',{href:refImg.src,x:refImg.x,y:refImg.y,width:refImg.w,height:refImg.w*refImg.ar,opacity:refImg.opacity,class:'refimg'},board);
   const list=play?game.stacks.filter(s=>!s.gone):lv.stacks;
   const idx=new Map(lv.stacks.map((s,i)=>[s.id,i]));
-  const order=list.slice().sort((a,b)=>(a.layer-b.layer)||(idx.get(a.id)-idx.get(b.id)));
+  const order=drawOrder(list,lv,idx);
   const startG=play?game:newGame(lv),rem=remaining(startG);
   const solIdx=new Map();(lv.solution||[]).forEach((id,i)=>{if(!solIdx.has(id))solIdx.set(id,i+1);});
   const layerG=el('g',{},board),over=el('g',{},board);
@@ -714,7 +734,7 @@ $('#lvDel').addEventListener('click',e=>arm(e.currentTarget,'Confirm delete',()=
   const id=L().id;levels.splice(cur,1);listStatus.splice(cur,1);cur=Math.min(cur,levels.length-1);persist();selectLevel(cur);toast(`Deleted ${id}.`);
 }));
 $('#btnReset').addEventListener('click',e=>arm(e.currentTarget,'Confirm reset',()=>{
-  levels=clone(ORIGINAL);cur=0;refreshAllStatus();persist();selectLevel(0);toast('All 40 levels are back to the sheet version.');
+  levels=clone(ORIGINAL);cur=0;savedBase=BASE;refreshAllStatus();persist();selectLevel(0);toast('All 40 levels are back to the sheet version.');
 }));
 
 /* ---------- import / export ---------- */
@@ -843,6 +863,7 @@ function renderAll(){
 window.addEventListener('resize',()=>{const r=board.getBoundingClientRect();if(r.width&&r.height){view.h=view.w*r.height/r.width;setViewBox();renderBoard();}});
 
 load();
+if(savedBase!==BASE){$('#saveNote').textContent='The built-in levels were updated since you last saved here. Press Reset to sheet to load them. That replaces the edits saved in this browser, so export first if you want to keep them.';setTimeout(()=>toast('New built-in levels: press Reset to sheet to load them.'),400);}
 $('#snap').value=String(snap);
 $('#tBoxes').setAttribute('aria-pressed',String(showBoxes));$('#tFree').setAttribute('aria-pressed',String(showFree));$('#tOrder').setAttribute('aria-pressed',String(showOrder));
 refreshAllStatus();resetHistory();
