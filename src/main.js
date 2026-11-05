@@ -1,7 +1,7 @@
 import './style.css';
 import ORIGINAL from './data/levels.json';
 import {esc,clone,COLORS,ckey,cidx,cname,fcls,bcls} from './util.js';
-import {CHIP_R,LAYOUT_DEFAULTS,hitBox,boxesOverlap,buildChains,chipsOf,pileAxis} from './layout.js';
+import {CHIP_R,LAYOUT_DEFAULTS,hitBox,boxesOverlap,buildChains,restingChains,chipsOf,pileAxis} from './layout.js';
 import {blockerOf,newGame,activeOf,remaining,tap,canTap,boosterShuffle,boosterMagnet,snapGame,restoreGame,verify,solve,check,tally,statusOf} from './engine.js';
 
 const $=s=>document.querySelector(s);
@@ -174,6 +174,7 @@ function renderBoard(){
   const list=play?game.stacks.filter(s=>!s.gone):lv.stacks;
   const idx=new Map(lv.stacks.map((s,i)=>[s.id,i]));
   const order=drawOrder(list,lv,idx);
+  const rest=restingChains(list.map(s=>lv.stacks.find(o=>o.id===s.id)||s),chains,play?new Map(game.stacks.map(g=>[g.id,g.left])):null);
   const startG=play?game:newGame(lv),rem=remaining(startG);
   const solIdx=new Map();(lv.solution||[]).forEach((id,i)=>{if(!solIdx.has(id))solIdx.set(id,i+1);});
   const layerG=el('g',{},board),over=el('g',{},board);
@@ -186,7 +187,7 @@ function renderBoard(){
     const hiddenNow=src.hidden&&(play?!(gs&&gs.revealed):false);
     const lockN=play?(gs?gs.lockN:0):(+src.lock||0);
     const count=play?gs.left:(+src.count||0);
-    const ch=chains.get(src.id),ax=pileAxis(ch?ch.root:src,layoutOpts);
+    const ch=rest.get(src.id)||chains.get(src.id),ax=pileAxis(ch?ch.root:src,layoutOpts);
     const chips=chipsOf(src,ch,layoutOpts,count);
     const cls=['stk'];if(blocked&&(showFree||play))cls.push('blocked');if(!blocked&&showFree&&!play)cls.push('free');if(!play&&sel.has(s.id))cls.push('sel');
     const g=el('g',{class:cls.join(' '),'data-id':s.id},layerG);

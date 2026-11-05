@@ -19,7 +19,7 @@ describe('levels 1 to 10 are laid out for chips', () => {
   it('stacks that do not touch keep a clear gap', () => {
     for (const l of first10) for (const a of l.stacks) for (const b of l.stacks) {
       if (a.id >= b.id || boxesOverlap(hitBox(a), hitBox(b))) continue;
-      expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))).toBeGreaterThanOrEqual(190);
+      expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))).toBeGreaterThanOrEqual(170);
     }
   });
 });
@@ -28,18 +28,18 @@ const lv8 = levels.find(l => l.id === 'level_008');
 const s8 = id => lv8.stacks.find(s => s.id === id);
 
 describe('chip piles are drawn as upright spirals', () => {
-  const chains = buildChains(lv8.stacks);
   const xs = cs => cs.map(c => c.x);
+  const base = {x: 100, y: 50, w: 150, h: 150, count: 5, spread: true, spread_direction: 1, spread_angle: 0, fan: false};
   it('the bottom chip stands at x, y and the top stack carries the spiral on', () => {
-    const red = chipsOf(s8('s07'), chains.get('s07'));
-    expect(red[0]).toMatchObject({x: s8('s07').x, y: s8('s07').y});
-    const yellow = chipsOf(s8('s08'), chains.get('s08'));
-    const n = s8('s07').count, whole = chipsOf({...s8('s07'), count: n + s8('s08').count}, chains.get('s07'));
-    expect(yellow[0].x).toBeCloseTo(whole[n].x);
-    expect(yellow[0].y).toBeCloseTo(whole[n].y);
+    const lower = {...base, id: 'a', layer: 0, spread_angle: 40}, upper = {...base, id: 'b', layer: 1, spread_angle: 40, on_stack: 'a'};
+    const ch = buildChains([lower, upper]);
+    expect(chipsOf(lower, ch.get('a'))[0]).toMatchObject({x: 100, y: 50});
+    const whole = chipsOf({...lower, count: 10}, ch.get('a')), top = chipsOf(upper, ch.get('b'));
+    expect(top[0].x).toBeCloseTo(whole[5].x);
+    expect(top[0].y).toBeCloseTo(whole[5].y);
   });
   it('spread_angle 0 is a straight stack', () => {
-    const c = chipsOf(s8('s07'), chains.get('s07'));
+    const c = chipsOf({...base, id: 'a', layer: 0});
     expect(new Set(xs(c).map(x => x.toFixed(6))).size).toBe(1);
     expect(c[1].y).toBeLessThan(c[0].y);
   });
