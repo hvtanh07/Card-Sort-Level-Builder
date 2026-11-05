@@ -256,7 +256,9 @@ function renderFrame(fr,lv,play){
   const tot=Math.max(cap,buf.length,1),inner=tr.x1-tr.x0-140,sw=inner/tot;
   for(let i=0;i<tot;i++){
     const c=buf[i],x=tr.x0+70+i*sw;
-    el('rect',{class:'slot'+(c?' '+fcls(c)+' full':'')+(i>=cap?' over':''),x:x+sw*0.12,y:tr.y0+75,width:sw*0.76,height:tr.y1-tr.y0-150,rx:Math.min(30,sw*0.35)},g);
+    const w=sw*0.76,h=tr.y1-tr.y0-150;
+    el('rect',{class:'slot'+(c?' full':'')+(i>=cap?' over':''),x:x+sw*0.12,y:tr.y0+75,width:w,height:h,rx:Math.min(30,sw*0.35)},g);
+    if(c){const k=Math.min(w,h)*0.46/CHIP_R,cg=el('g',{class:'tray-chip',transform:`translate(${fx(x+sw/2)} ${fx(tr.y0+75+h/2)}) scale(${fx(k)})`},g);drawChipFace(cg,fcls(c));}
   }
   el('text',{class:'tray-n',x:tr.x1,y:tr.y0-40},g).textContent=play?`Waiting ${buf.length} / ${cap}`:`Waiting slots: ${cap}`;
 }

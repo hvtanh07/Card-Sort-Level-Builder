@@ -97,10 +97,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .stk{cursor:pointer}
 .stk .side .chip{filter:brightness(.72)}
 .stk .side .chip-edge{fill:none;stroke:rgba(255,255,255,.85);stroke-width:6;stroke-dasharray:12 48}
-.stk .chip-rim{fill:var(--chip-rim);stroke:rgba(0,0,0,.25);stroke-width:2}
-.stk .face .chip{stroke:rgba(0,0,0,.18);stroke-width:2}
-.stk .notch{fill:#fff;opacity:.9}
-.stk .chip-in{fill:none;stroke:rgba(0,0,0,.18);stroke-width:5}
+.stk .chip-rim,.tray-chip .chip-rim{fill:var(--chip-rim);stroke:rgba(0,0,0,.25);stroke-width:2}
+.stk .face .chip,.tray-chip .chip{stroke:rgba(0,0,0,.18);stroke-width:2}
+.stk .notch,.tray-chip .notch{fill:#fff;opacity:.9}
+.stk .chip-in,.tray-chip .chip-in{fill:none;stroke:rgba(0,0,0,.18);stroke-width:5}
 .stk .cnt{font:800 46px/1 var(--display);fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.45);stroke-width:6px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .stk .meta{font:700 22px/1 var(--body);fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.55);stroke-width:5px;text-anchor:middle;pointer-events:none}
 .stk .ice{fill:var(--ice);opacity:.55;stroke:#fff;stroke-width:4;stroke-dasharray:14 8;pointer-events:none}
