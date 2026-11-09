@@ -1,6 +1,7 @@
 [
   {
     "id": "level_001",
+    "hard": false,
     "revision": 10,
     "seed": 0,
     "n_slots": 2,
@@ -87,6 +88,7 @@
   },
   {
     "id": "level_002",
+    "hard": false,
     "revision": 10,
     "seed": 0,
     "n_slots": 3,
@@ -208,6 +210,7 @@
   },
   {
     "id": "level_003",
+    "hard": false,
     "revision": 11,
     "seed": 0,
     "n_slots": 3,
@@ -330,6 +333,7 @@
   },
   {
     "id": "level_004",
+    "hard": false,
     "revision": 12,
     "seed": 0,
     "n_slots": 3,
@@ -488,6 +492,7 @@
   },
   {
     "id": "level_005",
+    "hard": true,
     "revision": 16,
     "seed": 0,
     "n_slots": 2,
@@ -678,6 +683,7 @@
   },
   {
     "id": "level_006",
+    "hard": false,
     "revision": 8,
     "seed": 0,
     "n_slots": 2,
@@ -868,6 +874,7 @@
   },
   {
     "id": "level_007",
+    "hard": false,
     "revision": 8,
     "seed": 0,
     "n_slots": 3,
@@ -1060,6 +1067,7 @@
   },
   {
     "id": "level_008",
+    "hard": false,
     "revision": 8,
     "seed": 0,
     "n_slots": 3,
@@ -1288,6 +1296,7 @@
   },
   {
     "id": "level_009",
+    "hard": false,
     "revision": 8,
     "seed": 0,
     "n_slots": 3,
@@ -1550,6 +1559,7 @@
   },
   {
     "id": "level_010",
+    "hard": true,
     "revision": 8,
     "seed": 0,
     "n_slots": 3,
@@ -1919,6 +1929,7 @@
   },
   {
     "id": "level_011",
+    "hard": false,
     "revision": 4,
     "seed": 0,
     "n_slots": 2,
@@ -2337,6 +2348,7 @@
   },
   {
     "id": "level_012",
+    "hard": false,
     "revision": 4,
     "seed": 0,
     "n_slots": 3,
@@ -2688,6 +2700,7 @@
   },
   {
     "id": "level_013",
+    "hard": false,
     "revision": 4,
     "seed": 0,
     "n_slots": 3,
@@ -3175,6 +3188,7 @@
   },
   {
     "id": "level_014",
+    "hard": false,
     "revision": 4,
     "seed": 0,
     "n_slots": 3,
@@ -3663,6 +3677,7 @@
   },
   {
     "id": "level_015",
+    "hard": true,
     "revision": 4,
     "seed": 0,
     "n_slots": 3,
@@ -4487,6 +4502,7 @@
   },
   {
     "id": "level_016",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -4973,6 +4989,7 @@
   },
   {
     "id": "level_017",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 2,
@@ -5392,6 +5409,7 @@
   },
   {
     "id": "level_018",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -5943,6 +5961,7 @@
   },
   {
     "id": "level_019",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -6563,6 +6582,7 @@
   },
   {
     "id": "level_020",
+    "hard": true,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -7318,6 +7338,7 @@
   },
   {
     "id": "level_021",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -7869,6 +7890,7 @@
   },
   {
     "id": "level_022",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -8388,6 +8410,7 @@
   },
   {
     "id": "level_023",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -8976,6 +8999,7 @@
   },
   {
     "id": "level_024",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -9663,6 +9687,7 @@
   },
   {
     "id": "level_025",
+    "hard": true,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -10453,6 +10478,7 @@
   },
   {
     "id": "level_026",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -11040,6 +11066,7 @@
   },
   {
     "id": "level_027",
+    "hard": false,
     "revision": 4,
     "seed": 0,
     "n_slots": 3,
@@ -11694,6 +11721,7 @@
   },
   {
     "id": "level_028",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -12315,6 +12343,7 @@
   },
   {
     "id": "level_029",
+    "hard": false,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,
@@ -13003,6 +13032,7 @@
   },
   {
     "id": "level_030",
+    "hard": true,
     "revision": 3,
     "seed": 0,
     "n_slots": 3,

@@ -2,7 +2,7 @@ import './style.css';
 import ORIGINAL from './data/levels.json';
 import {esc,clone,COLORS,ckey,cidx,cname,fcls,bcls} from './util.js';
 import {CHIP_R,LAYOUT_DEFAULTS,hitBox,boxesOverlap,buildChains,restingChains,chipsOf,pileAxis} from './layout.js';
-import {blockerOf,newGame,activeOf,remaining,tap,canTap,boosterShuffle,boosterMagnet,snapGame,restoreGame,verify,solve,check,tally,statusOf} from './engine.js';
+import {blockerOf,newGame,activeOf,remaining,tap,canTap,boosterShuffle,boosterMagnet,snapGame,restoreGame,verify,solve,check,tally,statusOf,setHard} from './engine.js';
 
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
@@ -60,7 +60,7 @@ function refreshList(){
   $('#lvList').innerHTML=levels.map((lv,i)=>{
     if(q&&!(String(lv.id).toLowerCase().includes(q)||String(i+1)===q))return '';
     const st=listStatus[i]||'ok',ch=isChanged(lv);
-    const el=[];if(lv.stacks.some(s=>s.hidden))el.push('hidden');if(lv.targets.some(t=>t.hidden))el.push('hidden pole');if(lv.stacks.some(s=>s.lock))el.push('locked');
+    const el=[];if(lv.hard)el.push('<b class="hard">HARD</b>');if(lv.stacks.some(s=>s.hidden))el.push('hidden');if(lv.targets.some(t=>t.hidden))el.push('hidden pole');if(lv.stacks.some(s=>s.lock))el.push('locked');
     return `<li><button type="button" class="lv" data-i="${i}" aria-current="${i===cur}"><span class="n">${i+1}</span><span><span class="t">${esc(lv.id)}${ch?' <i class="sr">changed</i>':''}</span><span class="m">${ch?'<i>● </i>':''}${lv.stacks.length} stacks · ${lv.targets.length} poles${el.length?' · '+el.join(', '):''}</span></span><span class="dot ${st}" title="${st==='ok'?'No problems':st==='warn'?'Has warnings':'Has errors'}"></span></button></li>`;
   }).join('');
   const a=$('#lvList [aria-current="true"]');if(a)a.scrollIntoView({block:'nearest'});
@@ -275,6 +275,7 @@ function renderPane(){
     p.innerHTML=`<h2>Level settings</h2>
       <div class="fields">
         ${fld('Level id','id',`<input id="fId" value="${esc(lv.id)}">`,'full')}
+        ${fld('Difficulty','hard',`<select id="fHard"><option value="0"${lv.hard?'':' selected'}>Normal</option><option value="1"${lv.hard?' selected':''}>Hard</option></select>`)}
         ${fld('Pole queues','n_slots',num('fSlots',lv.n_slots,'min="1" max="8"'))}
         ${fld('Waiting slots (chips)','buffer_capacity',num('fBuf',lv.buffer_capacity,'min="1"'))}
         ${fld('Revision','revision',num('fRev',lv.revision))}
@@ -473,6 +474,7 @@ pane.addEventListener('change',e=>{
   if(tab==='level'&&/^ref/.test(id)){refInput(t);return;}
   if(tab==='level'){
     if(id==='fId'){const v=t.value.trim();if(v)lv.id=v;}
+    if(id==='fHard')setHard(lv,t.value==='1');
     if(id==='fSlots'||id==='pSlots')lv.n_slots=Math.max(1,int(t.value));
     if(id==='fBuf')lv.buffer_capacity=Math.max(1,int(t.value));
     if(id==='fRev')lv.revision=int(t.value);
@@ -719,7 +721,7 @@ $('#lvList').addEventListener('click',e=>{const b=e.target.closest('.lv');if(b)s
 $('#lvSearch').addEventListener('input',refreshList);
 $('#lvNew').addEventListener('click',()=>{
   let n=levels.length+1,id;do{id='level_'+String(n).padStart(3,'0');n++;}while(levels.some(l=>l.id===id));
-  const lv={id,revision:1,seed:0,n_slots:3,buffer_capacity:26,targets:[{color:'color_0',capacity:18},{color:'color_1',capacity:18},{color:'color_2',capacity:18}],stacks:[],solution:[]};
+  const lv={id,hard:false,revision:1,seed:0,n_slots:3,buffer_capacity:26,targets:[{color:'color_0',capacity:18},{color:'color_1',capacity:18},{color:'color_2',capacity:18}],stacks:[],solution:[]};
   [['color_0',-200],['color_1',0],['color_2',200]].forEach(([c,x],k)=>{for(let r=0;r<3;r++)lv.stacks.push(makeStack(lv,{x,y:r*230,color:c,count:6}));});
   levels.splice(cur+1,0,lv);refreshAllStatus();selectLevel(cur+1);toast(`Added ${id} after the current level.`);
 });

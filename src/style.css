@@ -225,3 +225,4 @@ kbd{font:11px var(--mono);border:1px solid var(--line);border-bottom-width:2px;b
   .pane{overflow:visible}
   .tb .lbl{display:none}
 }
+.lv .m b.hard{color:#E5484D;font-weight:700}
