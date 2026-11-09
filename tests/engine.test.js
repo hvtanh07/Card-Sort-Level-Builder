@@ -25,7 +25,7 @@ describe('hard / normal flag', () => {
       expect(Object.keys(lv).slice(0, 2)).toEqual(['id', 'hard']);
     });
     expect(levels.slice(0, 30).filter(lv => lv.hard).map(lv => lv.id))
-      .toEqual(['level_005', 'level_010', 'level_015', 'level_020', 'level_025', 'level_030']);
+      .toEqual(['level_010', 'level_015', 'level_020', 'level_025', 'level_030']);
   });
   it('setHard keeps hard right after id', () => {
     const lv = {id: 'x', revision: 1, n_slots: 2};

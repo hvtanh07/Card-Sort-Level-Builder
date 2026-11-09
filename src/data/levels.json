@@ -492,7 +492,7 @@
   },
   {
     "id": "level_005",
-    "hard": true,
+    "hard": false,
     "revision": 16,
     "seed": 0,
     "n_slots": 2,
