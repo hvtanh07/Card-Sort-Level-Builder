@@ -142,6 +142,7 @@ export function check(lv,all){
   if(!lv.id)bad('The level has no id.');
   if(all&&all.filter(o=>o.id===lv.id).length>1)warn(`Another level in the list also has the id <b>${esc(lv.id)}</b>.`);
   if(!(lv.n_slots>=1))bad('<code>n_slots</code> (pole queues) must be 1 or more.');
+  if('hard' in lv&&typeof lv.hard!=='boolean')bad('<code>hard</code> must be <code>true</code> (Hard level) or <code>false</code> (normal level).');
   if(!(lv.buffer_capacity>=1))bad('<code>buffer_capacity</code> (waiting slots) must be 1 or more.');
   if(!(lv.targets||[]).length)bad('The level has no poles.');
   if(!(lv.stacks||[]).length)bad('The table has no stacks.');
@@ -179,3 +180,12 @@ export function tally(lv){
 }
 export const statusOf=iss=>iss.some(i=>i.k==='bad')?'bad':iss.some(i=>i.k==='warn')?'warn':'ok';
 
+
+/* Hard or normal level. Saved as "hard": true / false right after "id", like the game's level files. */
+export function setHard(lv,v){
+  const id=lv.id,rest=Object.entries(lv).filter(([k])=>k!=='id'&&k!=='hard');
+  Object.keys(lv).forEach(k=>delete lv[k]);
+  lv.id=id;lv.hard=!!v;
+  rest.forEach(([k,x])=>{lv[k]=x;});
+  return lv;
+}
