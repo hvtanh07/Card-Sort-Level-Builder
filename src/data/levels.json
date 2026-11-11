@@ -1560,7 +1560,7 @@
   {
     "id": "level_010",
     "hard": true,
-    "revision": 8,
+    "revision": 9,
     "seed": 0,
     "n_slots": 3,
     "buffer_capacity": 10,
@@ -1613,7 +1613,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s01",
@@ -1644,7 +1645,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s03",
@@ -1659,7 +1661,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s04",
@@ -1674,7 +1677,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s05",
@@ -1689,7 +1693,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s06",
@@ -1704,7 +1709,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s07",
@@ -1719,7 +1725,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s08",
@@ -1750,7 +1757,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s10",
@@ -1781,7 +1789,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s12",
@@ -1796,7 +1805,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s13",
@@ -1811,7 +1821,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s14",
@@ -1841,7 +1852,8 @@
         "spread": false,
         "on_stack": null,
         "spread_direction": 1,
-        "spread_angle": 0
+        "spread_angle": 0,
+        "hidden": true
       },
       {
         "id": "s16",
