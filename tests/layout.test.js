@@ -16,10 +16,11 @@ describe('levels 1 to 10 are laid out for chips', () => {
       expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeLessThan(150);
     }
   });
-  it('stacks that do not touch keep a clear gap', () => {
+  // Piles that sit side by side may touch (150 apart) so a pile laid across them overlaps each one clearly.
+  it('stacks that do not touch never overlap', () => {
     for (const l of first10) for (const a of l.stacks) for (const b of l.stacks) {
       if (a.id >= b.id || boxesOverlap(hitBox(a), hitBox(b))) continue;
-      expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(170);
+      expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(150);
     }
   });
 });
